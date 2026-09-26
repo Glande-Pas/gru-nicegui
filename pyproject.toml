@@ -1,0 +1,18 @@
+[project]
+name = "gru-nicegui"
+version = "0.0.0"
+authors = [{name="Cimbali", email="me@cimba.li" }]
+description = "NiceGUI GUI for Gru, the ESO addon manager."
+requires-python = ">=3.9"
+dependencies = [
+    "gru",
+    "nicegui",
+    "requests",
+]
+
+[project.scripts]
+gru-app = "main:run"
+
+[build-system]
+requires = ["setuptools >= 40.9.0", "wheel"]
+build-backend = "setuptools.build_meta"
