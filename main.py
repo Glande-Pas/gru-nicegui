@@ -9,6 +9,7 @@ import pages.settings  # noqa: F401
 import pages.installed  # noqa: F401
 import pages.search  # noqa: F401
 import pages.patches  # noqa: F401
+import pages.changes  # noqa: F401
 
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 
