@@ -10,7 +10,7 @@ from gru.addon import InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
 from .state import (opt_deps, rescan, flash_warning, flash_info, remove_vars_setting, logged_changes,
-                    update_pending, update_moot, set_locked, ambiguous_candidates, match_candidates,
+                    update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch)
 
 
@@ -152,14 +152,14 @@ def _render_meta_grid(addon, api, local):
     cells = ''.join(
         f'<div class="gru-meta-cell" style="grid-column:span {span}">'
         f'<span class="gru-meta-lbl">{lbl}</span>'
-        f'<span>{val}</span></div>'
+        f'<span class="{"gru-meta-nowrap" if lbl == "Directory" else ""}">{val}</span></div>'
         for lbl, val, span in _metadata_rows(addon, api, local)
     )
     ui.html(
-        f'<div style="display:grid; grid-template-columns:repeat(4,1fr);'
+        f'<div style="display:grid; grid-template-columns:repeat(4,1fr); width:100%;'
         f' gap:0.3rem 0.75rem; font-size:0.85em;">'
         f'{cells}</div>'
-    )
+    ).classes('w-full')
 
 
 def addon_card(addon, api, local, refresh, children: list | None = None):
@@ -228,7 +228,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
         f'</div>'
     )
 
-    with ui.card().classes('w-full'):
+    with ui.card().classes('w-full gap-2'):
         ui.html(title_html)
 
         with ui.row().classes('w-full items-start no-wrap gap-4'):
@@ -242,8 +242,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
             with ui.column().classes('flex-grow gap-1 min-w-0'):
                 _render_meta_grid(addon, api, local)
 
-            with ui.column().classes('items-end gap-1 shrink-0'):
-                if not is_embedded:
+            if not is_embedded:
+                with ui.column().classes('items-end shrink-0'):
                     if link:
                         ui.html(f'<a href="{link}" target="_blank" style="font-size:0.85em">🔗 ESOUI page</a>')
                     elif candidates:
@@ -256,42 +256,44 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
                                 'border-radius:0.4rem" title="No ESOUI add-on uses this folder name, so it '
                                 'can\'t be updated.">⚠️ Not found on ESOUI</span>')
 
-                if not is_installed and has_id:
-                    install_help = ('Unlock the installed version first' if locked_copy else
-                                    'Replaces the installed ' + ', '.join(
-                                        str(a.folder.relative_to(local.root)) for a in ambiguous_copies)
-                                    + ' folder and records it as this add-on' if ambiguous_copies else None)
-                    btn = ui.button('⬇️ Install', on_click=lambda: _run_install(addon, api, local, refresh))
-                    btn.set_enabled(not locked_copy)
-                    if install_help:
-                        btn.tooltip(install_help)
+        with ui.row().classes('w-full justify-end gap-1'):
+            if not is_installed and has_id:
+                install_help = ('Unlock the installed version first' if locked_copy else
+                                'Replaces the installed ' + ', '.join(
+                                    str(a.folder.relative_to(local.root)) for a in ambiguous_copies)
+                                + ' folder and records it as this add-on' if ambiguous_copies else None)
+                btn = ui.button('⬇️ Install', on_click=lambda: _run_install(addon, api, local, refresh))
+                btn.set_enabled(not locked_copy)
+                if install_help:
+                    btn.tooltip(install_help)
 
-                if is_installed:
-                    ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh))
+            if is_installed:
+                ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh))
 
-                    if can_update:
-                        label = '⬆️ Install standalone' if is_embedded else '⬆️ Update'
-                        up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
-                        if is_embedded:
-                            up_btn.tooltip('Install the update as a top-level library, which ESO loads '
-                                           'instead of this bundled copy')
+                if can_update:
+                    label = '⬆️ Install standalone' if is_embedded else '⬆️ Update'
+                    up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
+                    if is_embedded:
+                        up_btn.tooltip('Install the update as a top-level library, which ESO loads '
+                                       'instead of this bundled copy')
 
-                    if not is_embedded:
-                        save_btn = ui.button('💾 Save', on_click=lambda: _handle_save(addon, api, local, refresh))
-                        save_btn.set_enabled(addon.infos is not None)
-                        save_btn.tooltip('Save local changes as a patch, to re-apply after updates'
-                                         if addon.infos else "Add-on isn't matched online")
+                # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
+                # permanent -- remove the add-on and install the right one instead of changing it.
+                if not is_embedded and candidates:
+                    ui.button('🔗 Match ESOUI listing', on_click=lambda: _open_choose_match(addon, refresh)) \
+                      .tooltip('Select which ESOUI add-on this folder is, which several share')
 
-                    if not is_embedded and (candidates or match_candidates(addon)):
-                        match_label = '🔗 Choose match' if candidates else '🔗 Change match'
-                        ui.button(match_label, on_click=lambda: _open_choose_match(addon, refresh)) \
-                          .tooltip('Select which ESOUI add-on this folder is, which several share')
+                if not is_embedded:
+                    lock_label = '🔓 Unlock version' if is_locked else '🔒 Lock version'
+                    lock_btn = ui.button(lock_label, on_click=lambda: _handle_lock(addon, is_locked, refresh))
+                    if not is_locked:
+                        lock_btn.tooltip('Pin to the installed version: skip it on updates')
 
-                    if not is_embedded:
-                        lock_label = '🔓 Unlock' if is_locked else '🔒 Lock'
-                        lock_btn = ui.button(lock_label, on_click=lambda: _handle_lock(addon, is_locked, refresh))
-                        if not is_locked:
-                            lock_btn.tooltip('Pin to the installed version: skip it on updates')
+                if not is_embedded:
+                    save_btn = ui.button('💾 Save changes', on_click=lambda: _handle_save(addon, api, local, refresh))
+                    save_btn.set_enabled(addon.infos is not None)
+                    save_btn.tooltip('Save local changes as a patch, to re-apply after updates'
+                                     if addon.infos else "Add-on isn't matched online")
 
         if children:
             for child in sorted(children, key=lambda a: a.title.lower()):

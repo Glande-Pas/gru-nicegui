@@ -31,6 +31,13 @@ _META_CSS = """
     opacity: 0.6;
     white-space: nowrap;
 }
+.gru-meta-nowrap {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 a {
     color: %(link)s;
 }
@@ -42,7 +49,8 @@ a {
 
 # Quasar's QBtn defaults to white text on any filled color, and dark mode has its own !important
 # overrides for it -- an !important inline style is the only thing that reliably beats both.
-ui.button.default_props('text-color=#1a1a1a')
+# `dense` keeps the many-button addon-card toolbars compact.
+ui.button.default_props('text-color=#1a1a1a dense')
 ui.button.default_style('color: #1a1a1a !important')
 
 

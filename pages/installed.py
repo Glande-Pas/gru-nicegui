@@ -73,14 +73,6 @@ def installed_page():
         unused = [a for a in libs if local.depcount(a) == 0]
         missing = local.missing_deps(installed, opt=opt_deps())
 
-        if unmatched:
-            lines = []
-            for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
-                reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
-                lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
-            ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
-              .classes('bg-warning/20 border border-warning rounded p-2')
-
         async def update_all():
             before = {a.folder: (a.title, a.version) for a in local.installed}
             async with global_progress('Updating add-ons...') as pstate:
@@ -184,6 +176,15 @@ def installed_page():
                 addon_card(addon, api, local, body.refresh, children=children or None)
 
         addon_list(filter_state['term'])
+
+        if unmatched:
+            lines = []
+            for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
+                reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
+                lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
+            ui.separator()
+            ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
+              .classes('bg-warning/20 border border-warning rounded p-2')
 
     body()
     ui.timer(2.0, lambda: body.refresh() if poll_ambiguous_resolution() else None)
