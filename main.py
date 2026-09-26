@@ -7,6 +7,7 @@ from nicegui import ui
 import pages.about  # noqa: F401
 import pages.settings  # noqa: F401
 import pages.installed  # noqa: F401
+import pages.search  # noqa: F401
 
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 
