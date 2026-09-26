@@ -4,6 +4,9 @@ import importlib.resources
 
 from nicegui import ui
 
+from .state import get_state
+from .themes import get_theme, DEFAULT_THEME
+
 _PAGES = [
     ('/', '📦', 'Installed Add-Ons'),
     ('/search', '🔍', 'Search'),
@@ -15,12 +18,6 @@ _PAGES = [
 
 _LOGO = importlib.resources.files('gru_ui').joinpath('assets', 'gru.png')
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
-
-# "Gold": yellow primary (buttons, active nav, links) on charcoal, with a denim-blue header --
-# keeps the header from turning into a solid yellow bar while tying the palette to Gru's own mascot.
-PRIMARY = '#FFC800'
-SECONDARY = '#2B2B52'
-WARNING = '#FF9800'
 
 _META_CSS = """
 .gru-meta-cell {
@@ -35,9 +32,13 @@ _META_CSS = """
     white-space: nowrap;
 }
 a {
-    color: %(primary)s;
+    color: %(link)s;
 }
-""" % {'primary': PRIMARY}
+/* QUploader hardcodes white header text in its own stylesheet -- no prop reaches it. */
+.q-uploader__header {
+    color: #1a1a1a !important;
+}
+"""
 
 # Quasar's QBtn defaults to white text on any filled color, and dark mode has its own !important
 # overrides for it -- an !important inline style is the only thing that reliably beats both.
@@ -47,10 +48,15 @@ ui.button.default_style('color: #1a1a1a !important')
 
 def frame(active: str):
     """Add the header + left nav drawer to the current page. Call first, then add page content."""
-    ui.add_head_html(f'<style>{_META_CSS}</style>')
-    ui.colors(primary=PRIMARY, secondary=SECONDARY, warning=WARNING)
+    theme_name = get_state().config.get('app', 'theme', fallback=DEFAULT_THEME)
+    theme = get_theme(theme_name)
 
-    with ui.header().classes('items-center justify-between bg-secondary'):
+    ui.add_head_html(f'<style>{_META_CSS % {"link": theme["link"]}}</style>')
+    ui.colors(primary=theme['primary'], secondary=theme['secondary'], warning=theme['warning'])
+    ui.dark_mode(theme['dark'])
+
+    # The header stays denim regardless of theme, so its text must stay light regardless too.
+    with ui.header().classes('items-center justify-between bg-secondary text-white'):
         with ui.row().classes('items-center gap-2'):
             ui.image(str(_ICON)).classes('w-8 h-8')
             ui.label('Gru').classes('text-h5')
@@ -58,10 +64,12 @@ def frame(active: str):
     with ui.left_drawer().classes('items-stretch'):
         for path, icon, title in _PAGES:
             with ui.link(target=path).classes('no-underline'):
-                with ui.row().classes(
-                        'items-center gap-2 w-full p-2 rounded ' +
-                        ('bg-primary text-black font-medium' if path == active
-                         else 'text-primary hover:bg-gray-500/20')):
+                row = ui.row().classes('items-center gap-2 w-full p-2 rounded ' +
+                                       ('bg-primary text-black font-medium' if path == active
+                                        else 'hover:bg-gray-500/20'))
+                if path != active:
+                    row.style(f'color: {theme["link"]}')
+                with row:
                     ui.label(icon)
                     ui.label(title)
         ui.image(str(_LOGO)).classes('w-full')

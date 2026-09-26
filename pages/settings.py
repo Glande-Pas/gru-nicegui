@@ -9,6 +9,7 @@ from nicegui import ui
 from gru.config import save_config
 from gru_ui import shell
 from gru_ui.state import get_state, set_addons_root, GAME, flash_info
+from gru_ui.themes import THEMES, DEFAULT_THEME
 
 
 def _browse_directory() -> str | None:
@@ -56,6 +57,18 @@ def settings_page():
 
     ui.label('Settings').classes('text-h4')
 
+    ui.label('Theme').classes('text-h6 mt-4')
+    current_theme = config.get('app', 'theme', fallback=DEFAULT_THEME)
+
+    def on_theme_change(e):
+        config.set('app', 'theme', e.value)
+        save_config(config)
+        ui.navigate.reload()
+
+    ui.select(list(THEMES), value=current_theme if current_theme in THEMES else DEFAULT_THEME,
+              on_change=on_theme_change)
+
+    ui.separator()
     ui.label('Addons directory').classes('text-h6 mt-4')
     _addons_directory()
 
