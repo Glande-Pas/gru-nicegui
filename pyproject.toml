@@ -8,6 +8,7 @@ dependencies = [
     "gru",
     "nicegui",
     "requests",
+    "pywebview",
 ]
 
 [project.scripts]

@@ -19,7 +19,8 @@ _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 def run():
     # Actual theme/dark-mode is applied per-page in shell.frame() from the app.theme config;
     # this is only the pre-hydration default for the very first paint.
-    ui.run(title='Gru', favicon=str(_ICON), dark=THEMES[DEFAULT_THEME]['dark'], reload=False)
+    ui.run(title='Gru', favicon=str(_ICON), dark=THEMES[DEFAULT_THEME]['dark'], reload=False,
+           native=True, window_size=(1400, 900))
 
 
 if __name__ in {'__main__', '__mp_main__'}:
