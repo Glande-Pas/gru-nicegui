@@ -16,8 +16,25 @@ _PAGES = [
 _LOGO = importlib.resources.files('gru_ui').joinpath('assets', 'gru.png')
 
 
+_META_CSS = '''
+.gru-meta-cell {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.4em;
+    align-items: baseline;
+    min-width: 0;
+}
+.gru-meta-lbl {
+    opacity: 0.6;
+    white-space: nowrap;
+}
+'''
+
+
 def frame(active: str):
     """Add the header + left nav drawer to the current page. Call first, then add page content."""
+    ui.add_head_html(f'<style>{_META_CSS}</style>')
+
     with ui.header().classes('items-center justify-between'):
         ui.label('Gru').classes('text-h5')
 
