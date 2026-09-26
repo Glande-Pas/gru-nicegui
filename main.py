@@ -3,7 +3,7 @@
 
 import importlib.resources
 
-from nicegui import ui
+from nicegui import app, ui
 
 import pages.about  # noqa: F401
 import pages.settings  # noqa: F401
@@ -17,8 +17,7 @@ _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 
 
 def run():
-    # Actual theme/dark-mode is applied per-page in shell.frame() from the app.theme config;
-    # this is only the pre-hydration default for the very first paint.
+    app.native.start_args['icon'] = str(_ICON)
     ui.run(title='Gru', favicon=str(_ICON), dark=THEMES[DEFAULT_THEME]['dark'], reload=False,
            native=True, window_size=(1400, 900))
 
