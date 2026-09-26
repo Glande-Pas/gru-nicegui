@@ -43,10 +43,11 @@ def frame(active: str):
 
     with ui.left_drawer().classes('items-stretch'):
         for path, icon, title in _PAGES:
-            with ui.link(target=path).classes('no-underline text-black dark:text-white'):
+            with ui.link(target=path).classes('no-underline'):
                 with ui.row().classes(
                         'items-center gap-2 w-full p-2 rounded ' +
-                        ('bg-primary text-white' if path == active else 'hover:bg-gray-500/20')):
+                        ('bg-primary text-black font-medium' if path == active
+                         else 'text-primary hover:bg-gray-500/20')):
                     ui.label(icon)
                     ui.label(title)
         ui.image(str(_LOGO)).classes('w-full')
