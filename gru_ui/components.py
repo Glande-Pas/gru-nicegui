@@ -24,9 +24,7 @@ class _ProgressState:
 
 @contextlib.asynccontextmanager
 async def global_progress(label: str):
-    """A floating progress card pinned to a corner of the page, for an install/update -- mirrors a
-    real download's progress via a ui.timer that polls a plain state object mutated from the worker
-    thread the actual gru call runs in (see progress_factory())."""
+    """A floating progress card pinned to a corner of the page."""
     state = _ProgressState(label)
     with ui.card().classes('fixed bottom-4 right-4 z-[9999] w-96 shadow-lg gap-1') as card:
         label_el = ui.label(label)
@@ -46,9 +44,7 @@ async def global_progress(label: str):
 
 
 def progress_factory(state: _ProgressState):
-    """A gru ProgressFactory (size, message) -> ProgressProtocol that updates `state` -- pass as
-    `progress=` to unpack()/install_deps()/update(). Runs in a worker thread (see run.io_bound
-    calls below); only the ui.timer in global_progress() touches ui elements, on the main thread."""
+    """A gru ProgressFactory (size, message) -> ProgressProtocol that updates `state`."""
     def factory(size, message):
         return _StepProgress(state, size, message)
     return factory
@@ -167,8 +163,7 @@ def _render_meta_grid(addon, api, local):
 
 
 def addon_card(addon, api, local, refresh, children: list | None = None):
-    """Render a single addon as a card with action buttons. `refresh` is called after any action
-    that changes the installed set or its metadata, so the caller's page can redraw itself."""
+    """Render a single addon as a card with action buttons."""
     is_installed = isinstance(addon, InstalledAddon)
     has_id = getattr(addon, 'id', None) is not None
     can_update = update_pending(addon) if has_id and is_installed else False

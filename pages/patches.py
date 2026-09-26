@@ -15,11 +15,7 @@ from gru_ui.components import global_progress, progress_factory
 
 
 def _patch_status(addon, patch_path: pathlib.Path) -> str | None:
-    """Whether `patch_path`'s changes are already present in `addon`'s files, read-only (never writes,
-    unlike actually applying it). Returns 'applied' (every hunk's post-image is already there, per
-    gru's own `is_patch_applied`), 'conflict' (a hunk can't find its expected context either way --
-    the same case `_try_apply_patch` backs out on), 'pending' (matches the pre-patch state, ready to
-    apply), or None if the patch can't be parsed."""
+    """Whether `patch_path`'s changes are already present in `addon`'s files (read-only)"""
     try:
         with patch_path.open() as f:
             patch = gru_patch.parse_diff(f)
@@ -60,9 +56,7 @@ def _patch_status(addon, patch_path: pathlib.Path) -> str | None:
 
 
 async def _do_revert(addon, api, local, refresh):
-    """Reinstall `addon` fresh from its matched ESOUI listing -- discards whatever the patch (or any
-    other local edit) changed. Does not touch the saved patch itself: once files are back to
-    pristine, re-checking its status will show 'pending' again, ready to reapply."""
+    """Reinstall `addon` fresh from its matched ESOUI listing, discarding local changes."""
     title = addon.title
     async with global_progress(f'Reverting {title}...') as state:
         progress = progress_factory(state)
@@ -130,10 +124,7 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
 
 
 def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathlib.Path | None = None):
-    """Try a normal (non-partial) apply; on a clean failure, offer a partial retry via dialog instead
-    of silently giving up. `commit_to` set means `patch_path` is a freshly uploaded, not-yet-saved
-    patch: kept as the addon's saved patch (moved to `commit_to`) only once actually applied --
-    discarded instead if invalid, empty, or cancelled."""
+    """Apply the patch, offering a partial-apply dialog on conflict."""
     try:
         result = gru_patch.addon_patch_file(addon, patch_path)
     except PatchError as exc:

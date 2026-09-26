@@ -1,10 +1,4 @@
-"""Process-wide app state and shared business-logic helpers.
-
-Unlike the Streamlit port this replaces, NiceGUI event handlers run in place (no rerun-from-top),
-so there is no need to queue flash messages across reruns -- flash_info/flash_warning just fire an
-ui.notify() immediately. State is a single process-wide singleton rather than per-session, matching
-how this app is actually launched: one local desktop user, one addons directory.
-"""
+"""Process-wide app state and shared business-logic helpers."""
 
 import concurrent.futures
 import contextlib
@@ -80,10 +74,7 @@ def set_addons_root(path: pathlib.Path):
 
 
 def spawn_ambiguous_resolution():
-    """After a scan, if any addon's directory is ambiguous online, try to auto-resolve it in the
-    background via gru's CRC32 file-content check -- real network round trips per candidate, so
-    this never blocks the caller. Skips spawning while a previous attempt is still running;
-    poll_ambiguous_resolution() picks up the result."""
+    """Auto-resolve ambiguous addon matches in the background via gru's CRC32 check."""
     global _ambiguous_future
     state = get_state()
     if state.local is None:
@@ -100,8 +91,7 @@ def ambiguous_resolution_pending() -> bool:
 
 
 def poll_ambiguous_resolution() -> bool:
-    """Call periodically (e.g. from a ui.timer) while a background resolution may be pending.
-    Returns True once a resolution has just finished, meaning the caller should refresh its view."""
+    """Call periodically; returns True once a pending background resolution has finished."""
     global _ambiguous_future
     if _ambiguous_future is None or not _ambiguous_future.done():
         return False
@@ -125,9 +115,7 @@ def opt_deps() -> bool:
 
 
 def patch_updates() -> bool:
-    """Whether a bulk update should re-apply each addon's saved patch afterwards, as `gru update` does.
-    Only a full "Update all" reapplies patches this way -- a single-addon update always installs the
-    clean upstream version instead, as gru's own `get` command does."""
+    """Whether a bulk update should re-apply each addon's saved patch afterwards."""
     return get_state().config.getboolean(f'{GAME}.addons', 'patch_updates')
 
 
@@ -137,8 +125,7 @@ def sortkey() -> str | None:
 
 
 def update_moot(addon) -> bool:
-    """Whether updating this addon is pointless: a bundled copy outranked by a newer copy elsewhere, which ESO
-    loads instead of it. gru skips those, as updating them would install a standalone copy that already exists."""
+    """Whether updating this addon is pointless: superseded by a newer copy elsewhere."""
     return addon.parent is not None and addon.is_superseded
 
 
@@ -148,8 +135,7 @@ def update_pending(addon) -> bool:
 
 
 def match_candidates(addon) -> list:
-    """The online addons an installed folder could be, when several of them share its dir -- whether or not
-    addons.csv already records which one it is."""
+    """The online addons an installed folder could be, when several share its dir."""
     try:
         get_state().api.dir(addon.dir)
     except AmbiguousDirectory as err:
@@ -160,8 +146,7 @@ def match_candidates(addon) -> list:
 
 
 def ambiguous_candidates(addon) -> list:
-    """The online addons an installed folder could be, when its dir matches several of them and nothing recorded
-    in addons.csv says which. gru leaves such folders unmatched: never updated, and saved with no link."""
+    """match_candidates(), but only when the addon is still unmatched."""
     return [] if addon.infos is not None else match_candidates(addon)
 
 
@@ -185,8 +170,7 @@ def set_locked(addon, locked: bool):
 
 
 def save_addon_patch(addon, api, local) -> int | None:
-    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file to
-    match. Returns the modified-file count (0 removes a stale patch), or None on failure (flashed)."""
+    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file."""
     patch_dir = user_config(local.game)
     patch_dir.mkdir(exist_ok=True)
     try:
@@ -216,8 +200,7 @@ def remove_vars_setting() -> str:
 
 @contextlib.contextmanager
 def logged_changes():
-    """Persist changes made to addons within the block, as the CLI does: save addons.csv, so the next
-    scan keeps the link/lock of each install, and append a changes.csv row per changed version."""
+    """Persist changes made to addons within the block, as the CLI does."""
     state = get_state()
     before = state.local.snapshot()
     try:

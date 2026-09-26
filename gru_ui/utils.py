@@ -23,11 +23,7 @@ def si_suffixed(num: int) -> str:
 
 
 def eso_colored(text: str) -> str:
-    """Convert ESO color codes (|cRRGGBB...|r) to HTML <span> elements.
-
-    Handles nested and sequential color codes; |r closes the innermost open span.
-    Unclosed spans at end-of-string are closed automatically.
-    """
+    """Convert ESO color codes (|cRRGGBB...|r) to HTML <span> elements."""
     parts = re.split(r'(\|c[0-9A-Fa-f]{6}|\|r)', text)
     result = []
     open_spans = 0
@@ -51,8 +47,7 @@ def strip_eso_colors(text: str) -> str:
 
 
 def anchor_id(dir_name: str) -> str:
-    """A stable, link-safe HTML id for a top-level installed addon's card, so a `#`-link can
-    scroll straight to it (e.g. from a warning banner listing unmatched addons)."""
+    """A stable, link-safe HTML id for a top-level installed addon's card."""
     return 'addon-' + re.sub(r'[^\w-]', '_', dir_name)
 
 
