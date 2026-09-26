@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=GRU
+Comment=ESO Addon Manager
+Exec=launch.sh
+Icon=gru_ui/assets/icon.png
+Terminal=false
+Type=Application
+Categories=Game;Utility;
