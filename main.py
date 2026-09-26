@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Entry point: registers every page and starts the NiceGUI server."""
 
 import importlib.resources
