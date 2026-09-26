@@ -14,11 +14,14 @@ import pages.changes  # noqa: F401
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
+# Windows' native-window-icon path (nicegui/native/window_icon.py) calls Win32's LoadImageW with
+# IMAGE_ICON, which only accepts .ico -- a .png there fails silently (just a log warning).
+_ICON_ICO = importlib.resources.files('gru_ui').joinpath('assets', 'icon.ico')
 
 
 def run():
-    app.native.start_args['icon'] = str(_ICON)
-    ui.run(title='Gru', favicon=str(_ICON), dark=THEMES[DEFAULT_THEME]['dark'], reload=False,
+    app.native.start_args['icon'] = str(_ICON)  # only takes effect on GTK/Qt, per pywebview's own docs
+    ui.run(title='Gru', favicon=str(_ICON_ICO), dark=THEMES[DEFAULT_THEME]['dark'], reload=False,
            native=True, window_size=(1400, 900))
 
 

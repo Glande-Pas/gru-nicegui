@@ -11,6 +11,9 @@ dependencies = [
     "pywebview",
 ]
 
+[project.optional-dependencies]
+build = ["pyinstaller"]
+
 [project.scripts]
 gru-app = "main:run"
 

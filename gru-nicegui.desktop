@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=GRU
 Comment=ESO Addon Manager
-Exec=launch.sh
+Exec=main.py
 Icon=gru_ui/assets/icon.png
 Terminal=false
 Type=Application
