@@ -16,6 +16,11 @@ _PAGES = [
 _LOGO = importlib.resources.files('gru_ui').joinpath('assets', 'gru.png')
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 
+# "Gold": yellow primary (buttons, active nav, links) on charcoal, with a denim-blue header --
+# keeps the header from turning into a solid yellow bar while tying the palette to Gru's own mascot.
+PRIMARY = '#FFC800'
+SECONDARY = '#2B2B52'
+WARNING = '#FF9800'
 
 _META_CSS = """
 .gru-meta-cell {
@@ -29,12 +34,21 @@ _META_CSS = """
     opacity: 0.6;
     white-space: nowrap;
 }
-"""
+a {
+    color: %(primary)s;
+}
+""" % {'primary': PRIMARY}
+
+# Quasar's QBtn defaults to white text on any filled color, and dark mode has its own !important
+# overrides for it -- an !important inline style is the only thing that reliably beats both.
+ui.button.default_props('text-color=#1a1a1a')
+ui.button.default_style('color: #1a1a1a !important')
 
 
 def frame(active: str):
     """Add the header + left nav drawer to the current page. Call first, then add page content."""
     ui.add_head_html(f'<style>{_META_CSS}</style>')
+    ui.colors(primary=PRIMARY, secondary=SECONDARY, warning=WARNING)
 
     with ui.header().classes('items-center justify-between bg-secondary'):
         with ui.row().classes('items-center gap-2'):
