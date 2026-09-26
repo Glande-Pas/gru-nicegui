@@ -66,10 +66,12 @@ def frame(active: str):
     # The header stays denim regardless of theme, so its text must stay light regardless too.
     with ui.header().classes('items-center justify-between bg-secondary text-white'):
         with ui.row().classes('items-center gap-2'):
+            drawer_toggle = ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round')
             ui.image(str(_ICON)).classes('w-8 h-8')
             ui.label('Gru').classes('text-h5')
+    drawer_toggle.style('color: white !important')
 
-    with ui.left_drawer().classes('items-stretch'):
+    with ui.left_drawer().classes('items-stretch') as drawer:
         for path, icon, title in _PAGES:
             with ui.link(target=path).classes('no-underline'):
                 row = ui.row().classes('items-center gap-2 w-full p-2 rounded ' +
