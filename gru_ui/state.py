@@ -39,7 +39,6 @@ class AppState:
         if root and pathlib.Path(root).exists():
             self.local = Folder(GAME, self.config)
             self.local.scan(self.api)
-            spawn_ambiguous_resolution()
 
 
 _state = None
@@ -49,6 +48,7 @@ def get_state() -> AppState:
     global _state
     if _state is None:
         _state = AppState()
+        spawn_ambiguous_resolution()
     return _state
 
 
