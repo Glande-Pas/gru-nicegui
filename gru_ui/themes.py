@@ -1,7 +1,7 @@
 """Named GUI color themes, selected via the app.theme config value."""
 
 THEMES = {
-    'Gold': {
+    'Midnight Gold': {
         'dark': True,
         'primary': '#FFC800',
         'secondary': '#2B2B52',
@@ -17,7 +17,7 @@ THEMES = {
     },
 }
 
-DEFAULT_THEME = 'Gold'
+DEFAULT_THEME = 'Daylight'
 
 
 def get_theme(name: str) -> dict:

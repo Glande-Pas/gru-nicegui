@@ -137,6 +137,17 @@ def installed_page():
             ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
             ui.button('🔄 Refresh', on_click=refresh_all)
 
+        if unmatched:
+            lines = []
+            for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
+                reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
+                lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
+            with ui.row().classes('w-full items-start justify-between gap-2 bg-warning/20 '
+                                  'border border-warning rounded p-2') as banner:
+                ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
+                  .classes('flex-grow')
+                ui.icon('close').classes('cursor-pointer').on('click', banner.delete)
+
         def on_filter(e):
             filter_state['term'] = e.value or ''
             addon_list.refresh(filter_state['term'])
@@ -176,15 +187,6 @@ def installed_page():
                 addon_card(addon, api, local, body.refresh, children=children or None)
 
         addon_list(filter_state['term'])
-
-        if unmatched:
-            lines = []
-            for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
-                reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
-                lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
-            ui.separator()
-            ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
-              .classes('bg-warning/20 border border-warning rounded p-2')
 
     body()
     ui.timer(2.0, lambda: body.refresh() if poll_ambiguous_resolution() else None)

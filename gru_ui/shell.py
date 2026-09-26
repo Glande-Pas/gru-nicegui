@@ -82,6 +82,7 @@ def frame(active: str):
                 with row:
                     ui.label(icon)
                     ui.label(title)
-        ui.image(str(_LOGO)).classes('w-full')
+        with ui.column().classes('w-full flex-grow min-h-0 overflow-hidden'):
+            ui.image(str(_LOGO)).classes('w-full').props('fit=cover position=top')
 
     ui.page_title(f'Gru — {dict((p, t) for p, _, t in _PAGES).get(active, "")}')
