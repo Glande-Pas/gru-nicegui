@@ -88,7 +88,7 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
             if f.failed:
                 ui.label(f'- {f.path}: {", ".join(f.failed)}')
         ui.label("You can apply everything that still matches and save the rest next to the add-on's own "
-                 "files as .rej, for manual reconciliation — or cancel and fix the patch first.") \
+                 'files as .rej, for manual reconciliation — or cancel and fix the patch first.') \
           .classes('text-caption')
 
         def apply_partial():
@@ -222,7 +222,7 @@ def patches_page():
             _try_apply_patch(addon, staging_path, body.refresh, commit_to=patch_dir / f'{addon_dir}.patch')
 
         ui.upload(label='Import a patch — drag & drop or browse', on_upload=handle_upload,
-                 auto_upload=True).props('accept=.patch').classes('w-full')
+                  auto_upload=True).props('accept=.patch').classes('w-full')
 
         if not patches:
             ui.label('No saved patches found.')
@@ -245,7 +245,7 @@ def patches_page():
             version = header.get('Version', '?')
             date = header.get('Date', '?')
             diff_body = '\n'.join(text.splitlines()[body_start:])
-            n_files = sum(1 for l in diff_body.splitlines() if l.startswith('--- '))
+            n_files = sum(1 for line in diff_body.splitlines() if line.startswith('--- '))
 
             addon = next((a for a in local.installed if a.dir == patch_file.stem), None)
             pstatus = _patch_status(addon, patch_file) if addon else None
@@ -276,7 +276,7 @@ def patches_page():
                             apply_btn.tooltip("Add-on isn't installed")
 
                     ui.button('⬇️ Download',
-                             on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n))
+                              on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n))
 
                     def delete(pf=patch_file):
                         pf.unlink()

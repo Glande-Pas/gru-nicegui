@@ -105,7 +105,7 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.select(vars_options, value=current_vars if current_vars in vars_options else 'ask',
-              label="When removing an add-on, its saved variables should be", on_change=on_vars_change)
+              label='When removing an add-on, its saved variables should be', on_change=on_vars_change)
 
     ui.separator()
     ui.label('Change log').classes('text-h6')

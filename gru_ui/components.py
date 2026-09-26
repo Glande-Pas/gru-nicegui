@@ -289,9 +289,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
 
                     if not is_embedded and (candidates or match_candidates(addon)):
                         match_label = '🔗 Choose match' if candidates else '🔗 Change match'
-                        ui.button(match_label,
-                                 on_click=lambda: _open_choose_match(addon, refresh)
-                                 ).tooltip('Select which ESOUI add-on this folder is, which several share')
+                        ui.button(match_label, on_click=lambda: _open_choose_match(addon, refresh)) \
+                          .tooltip('Select which ESOUI add-on this folder is, which several share')
 
                     if not is_embedded:
                         lock_label = '🔓 Unlock' if is_locked else '🔒 Lock'
@@ -436,8 +435,8 @@ def _open_choose_match(addon: InstalledAddon, refresh):
             link_html = ui.html('')
 
             def show_link():
-                link_html.set_content(f'<a href="{picked_box["value"].metadata["link"]}" target="_blank">'
-                                       '🔗 View it on ESOUI</a>')
+                link_html.set_content(
+                    f'<a href="{picked_box["value"].metadata["link"]}" target="_blank">🔗 View it on ESOUI</a>')
 
             def on_pick(e):
                 picked_box['value'] = ranked[e.value] if isinstance(e.value, int) else e.value

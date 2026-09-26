@@ -16,7 +16,7 @@ _PAGES = [
 _LOGO = importlib.resources.files('gru_ui').joinpath('assets', 'gru.png')
 
 
-_META_CSS = '''
+_META_CSS = """
 .gru-meta-cell {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -28,7 +28,7 @@ _META_CSS = '''
     opacity: 0.6;
     white-space: nowrap;
 }
-'''
+"""
 
 
 def frame(active: str):

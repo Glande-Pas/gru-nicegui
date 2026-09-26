@@ -19,7 +19,7 @@ def si_suffixed(num: int) -> str:
         scale = 0
     scaled = num / 10 ** (3 * scale)
     suffixes = ['', 'k', 'M', 'G']
-    return locale.format_string(f"%.{1 if scaled < 10 else 0}f{suffixes[scale]}", scaled)
+    return locale.format_string(f'%.{1 if scaled < 10 else 0}f{suffixes[scale]}', scaled)
 
 
 def eso_colored(text: str) -> str:
