@@ -160,10 +160,10 @@ def installed_page():
         def addon_list(term: str):
             children_map = defaultdict(list)
             for a in installed:
-                if a.folder.parent != local.root:
-                    children_map[a.folder.parent].append(a)
+                if a.parent is not None:
+                    children_map[a.parent].append(a)
 
-            standalone = [a for a in installed if a.folder.parent == local.root]
+            standalone = [a for a in installed if a.parent is None]
             if term:
                 filter_lower = term.lower()
                 standalone = [a for a in standalone if filter_lower in (a.title or '').lower()]
@@ -183,7 +183,7 @@ def installed_page():
                 return (prio, (a.title or a.dir).lower())
 
             for addon in sorted(standalone, key=_sort_key):
-                children = children_map.get(addon.folder)
+                children = children_map.get(addon)
                 addon_card(addon, api, local, body.refresh, children=children or None)
 
         addon_list(filter_state['term'])
