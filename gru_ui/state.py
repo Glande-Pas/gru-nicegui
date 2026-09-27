@@ -105,8 +105,6 @@ def poll_ambiguous_resolution() -> bool:
 
     if resolved:
         get_state().local.export_state()
-        for addon in resolved:
-            flash_info(f'Resolved: <b>{eso_colored(addon.title)}</b> — exact file content match')
     return True
 
 
