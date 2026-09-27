@@ -3,6 +3,7 @@
 
 """Patches page: browse saved addon patches."""
 
+import io
 import pathlib
 import warnings
 
@@ -15,6 +16,11 @@ from gru_ui import shell
 from gru_ui.state import get_state, flash_warning, flash_info, logged_changes, rescan, diff_addon_patch
 from gru_ui.utils import eso_colored
 from gru_ui.components import global_progress, progress_factory
+
+
+def _diff_content_equal(a: str, b: str) -> bool:
+    """Compare two patch texts ignoring their Date/mtime header noise, which differs on every scan."""
+    return gru_patch.parse_diff(io.StringIO(a)) == gru_patch.parse_diff(io.StringIO(b))
 
 
 def _patch_status(addon, patch_path: pathlib.Path) -> str | None:
@@ -202,7 +208,8 @@ def patches_page():
 
                 patch_path = patch_dir / f'{addon.dir}.patch'
                 existing = patch_path.read_text() if patch_path.exists() else None
-                if existing == new_text:
+                if existing == new_text or (existing is not None and new_text is not None and
+                                            _diff_content_equal(existing, new_text)):
                     continue
 
                 if existing is not None:

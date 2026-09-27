@@ -175,7 +175,7 @@ def diff_addon_patch(addon, api, local) -> tuple[int, str] | None:
     text), or None on failure (flashed)."""
     try:
         out = io.StringIO()
-        with local.unmodified_addon(addon.infos, api) as ref_addon:
+        with local.unmodified_addon(addon.infos, addon.dir, api) as ref_addon:
             with warnings.catch_warnings(record=True, category=UserWarning) as caught:
                 n = gru_patch.addon_diff(addon, ref_addon, out)
         for w in caught:
