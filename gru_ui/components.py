@@ -3,6 +3,7 @@
 import contextlib
 import functools
 import warnings
+import webbrowser
 
 from nicegui import run, ui
 
@@ -13,6 +14,11 @@ from .state import (get_state, opt_deps, rescan, flash_warning, flash_info, remo
                     logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch)
 from .themes import get_theme, DEFAULT_THEME
+
+
+def external_link(inner_html: str, url: str, style: str = '') -> None:
+    """A link that opens in the system browser, not the native app window (no back/close there)."""
+    ui.html(f'<a style="cursor:pointer;{style}">{inner_html}</a>').on('click', lambda: webbrowser.open(url))
 
 
 class _ProgressState:
@@ -251,11 +257,11 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
             if not is_embedded:
                 with ui.column().classes('items-end shrink-0'):
                     if link:
-                        ui.html(f'<a href="{link}" target="_blank" style="font-size:0.85em">🔗 ESOUI page</a>')
+                        external_link('🔗 ESOUI page', link, style='font-size:0.85em')
                     elif candidates:
-                        ui.html('<span style="font-size:0.85em">Could be any of:<br/>' + '<br/>'.join(
-                                f'<a href="{c.metadata["link"]}" target="_blank">🔗 {eso_colored(c.title)}</a>'
-                                for c in candidates) + '</span>')
+                        ui.html('<span style="font-size:0.85em">Could be any of:</span>')
+                        for c in candidates:
+                            external_link(f'🔗 {eso_colored(c.title)}', c.metadata['link'])
                     else:
                         ui.html('<span style="display:inline-block;font-size:0.85em;padding:0.1rem 0.45rem;'
                                 'background:rgba(255,171,0,0.15);border:1px solid rgba(255,171,0,0.4);'
@@ -436,10 +442,10 @@ def _open_choose_match(addon: InstalledAddon, refresh):
             current_index = next((i for i, c in enumerate(ranked) if c is addon.infos), 0)
             picked_box = {'value': ranked[current_index]}
             link_html = ui.html('')
+            link_html.on('click', lambda: webbrowser.open(picked_box['value'].metadata['link']))
 
             def show_link():
-                link_html.set_content(
-                    f'<a href="{picked_box["value"].metadata["link"]}" target="_blank">🔗 View it on ESOUI</a>')
+                link_html.set_content('<a style="cursor:pointer">🔗 View it on ESOUI</a>')
 
             def on_pick(e):
                 picked_box['value'] = ranked[e.value] if isinstance(e.value, int) else e.value

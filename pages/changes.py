@@ -6,6 +6,7 @@ from nicegui import ui
 
 from gru.app import read_changes, NOT_INSTALLED
 from gru_ui import shell
+from gru_ui.components import external_link
 from gru_ui.state import get_state, GAME
 
 
@@ -77,7 +78,7 @@ def changes_page():
                     ui.label(r['to']).classes('w-24')
                     with ui.element('div').classes('w-20'):
                         if r['link']:
-                            ui.link('🔗 page', r['link'], new_tab=True)
+                            external_link('🔗 page', r['link'])
 
     def on_toggle(k, value):
         kind_state[k] = value
