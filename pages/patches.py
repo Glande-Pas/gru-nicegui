@@ -9,7 +9,7 @@ from gru import patch as gru_patch
 from gru.patch import PatchError
 from gru.config import user_config, encoding_open
 from gru_ui import shell
-from gru_ui.state import get_state, flash_warning, flash_info, logged_changes, rescan, save_addon_patch
+from gru_ui.state import get_state, flash_warning, flash_info, logged_changes, rescan, diff_addon_patch
 from gru_ui.utils import eso_colored
 from gru_ui.components import global_progress, progress_factory
 
@@ -168,6 +168,15 @@ def patches_page():
     def body():
         patches = sorted(patch_dir.glob('*.patch')) if patch_dir.exists() else []
 
+        async def confirm_squash(addon, action: str) -> bool:
+            with ui.dialog() as confirm, ui.card():
+                ui.html(f'The saved patch for <b>{eso_colored(addon.title)}</b> differs from what '
+                        'scanning just found.')
+                with ui.row().classes('w-full'):
+                    ui.button(f'✅ {action}', on_click=lambda: confirm.submit(True)).classes('flex-grow')
+                    ui.button('⏭️ Skip', on_click=lambda: confirm.submit(False)).classes('flex-grow')
+            return bool(await confirm)
+
         async def scan_and_save():
             linked = [a for a in local.installed if a.infos is not None and a.folder.parent == local.root]
             if not linked:
@@ -182,10 +191,35 @@ def patches_page():
             n_saved = 0
             for addon in linked:
                 log.push(f'Checking {addon.title}…')
-                n = await run.io_bound(save_addon_patch, addon, api, local)
-                if n:
+                result = await run.io_bound(diff_addon_patch, addon, api, local)
+                if result is None:
+                    continue
+                n, text = result
+                new_text = text if n > 0 else None
+
+                patch_path = patch_dir / f'{addon.dir}.patch'
+                existing = patch_path.read_text() if patch_path.exists() else None
+                if existing == new_text:
+                    continue
+
+                if existing is not None:
+                    if new_text is None:
+                        action = 'Remove'
+                    elif _patch_status(addon, patch_path) == 'applied':
+                        action = 'Update'
+                    else:
+                        action = 'Replace'
+                    if not await confirm_squash(addon, action):
+                        log.push(f'Skipped {addon.title}.')
+                        continue
+
+                if new_text is not None:
+                    patch_dir.mkdir(exist_ok=True)
+                    patch_path.write_text(new_text)
                     flash_info(f'Saved patch for <b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
                     n_saved += 1
+                else:
+                    patch_path.unlink(missing_ok=True)
             dialog.close()
             flash_info(f'Done — {n_saved} patch(es) saved.')
             body.refresh()

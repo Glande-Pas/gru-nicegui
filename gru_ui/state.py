@@ -167,10 +167,9 @@ def set_locked(addon, locked: bool):
     get_state().local.export_state()
 
 
-def save_addon_patch(addon, api, local) -> int | None:
-    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file."""
-    patch_dir = user_config(local.game)
-    patch_dir.mkdir(exist_ok=True)
+def diff_addon_patch(addon, api, local) -> tuple[int, str] | None:
+    """Diff `addon` against its unmodified ESOUI listing. Returns (modified-file count, diff
+    text), or None on failure (flashed)."""
     try:
         out = io.StringIO()
         with local.unmodified_addon(addon.infos, api) as ref_addon:
@@ -181,10 +180,21 @@ def save_addon_patch(addon, api, local) -> int | None:
     except Exception as exc:
         flash_warning(f'Failed to check <b>{eso_colored(addon.title)}</b>: {exc}')
         return None
+    return n, out.getvalue()
 
+
+def save_addon_patch(addon, api, local) -> int | None:
+    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file."""
+    result = diff_addon_patch(addon, api, local)
+    if result is None:
+        return None
+    n, text = result
+
+    patch_dir = user_config(local.game)
+    patch_dir.mkdir(exist_ok=True)
     patch_path = patch_dir / f'{addon.dir}.patch'
     if n > 0:
-        patch_path.write_text(out.getvalue())
+        patch_path.write_text(text)
     elif patch_path.exists():
         patch_path.unlink()
     return n
