@@ -311,8 +311,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
                                      if addon.infos else "Add-on isn't matched online")
 
         if children:
-            for child in sorted(children, key=lambda a: a.title.lower()):
-                addon_card(child, api, local, refresh)
+            with ui.expansion(f'{len(children)} sub-addon(s)', icon='expand_more').classes('w-full'):
+                for child in sorted(children, key=lambda a: a.title.lower()):
+                    addon_card(child, api, local, refresh)
 
 
 def _handle_lock(addon, is_locked: bool, refresh):
