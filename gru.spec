@@ -1,4 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
+# vim: set ft=python:
 """PyInstaller spec: bundles gru-nicegui into a single standalone executable.
 
 NiceGUI's own static assets (JS/CSS/templates) are collected automatically by
@@ -20,8 +20,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # We use pywebview's GTK backend; PyInstaller refuses to bundle more than one Qt binding, and this
-    # dev machine happens to have both PyQt5 and PyQt6 installed for unrelated reasons.
+    # We use pywebview's GTK backend
     excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6'],
     noarchive=False,
 )
@@ -40,6 +39,6 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     icon='gru_ui/assets/icon.ico',  # only embeds on Windows/macOS; PyInstaller ignores it on Linux
 )
