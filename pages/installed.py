@@ -131,11 +131,12 @@ def installed_page():
             locked_note = f' {len(locked)} version locked.' if locked else ''
             locked_note += f' {len(ambiguous)} matching several ESOUI add-ons.' if ambiguous else ''
             ui.label(f'{len(installed)} addon(s) installed, {len(can_update)} update(s) available.{locked_note}') \
-              .classes('text-caption flex-grow')
-            ui.button('⬆️ Update all', on_click=update_all).set_enabled(bool(can_update))
-            ui.button('⬇️ Install missing', on_click=install_missing).set_enabled(bool(missing))
-            ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
-            ui.button('🔄 Refresh', on_click=refresh_all)
+              .classes('text-caption flex-grow min-w-0')
+            with ui.row().classes('gap-2 shrink-0 no-wrap'):
+                ui.button('⬆️ Update all', on_click=update_all).set_enabled(bool(can_update))
+                ui.button('⬇️ Install missing', on_click=install_missing).set_enabled(bool(missing))
+                ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
+                ui.button('🔄 Refresh', on_click=refresh_all)
 
         if unmatched:
             lines = []
