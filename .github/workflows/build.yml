@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: gru-linux
+            artifact-path: dist/gru
+          - os: windows-latest
+            artifact-name: gru-windows
+            artifact-path: dist/gru.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install GTK/WebKit (pywebview's Linux backend)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-0 libwebkit2gtk-4.1-0 gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
+            libgirepository1.0-dev libcairo2-dev pkg-config gcc python3-dev
+
+      # gru isn't on PyPI -- install it first so pip finds it already satisfied when it
+      # resolves gru-nicegui's own "gru" dependency, instead of trying PyPI and failing.
+      - name: Install gru and gru-nicegui
+        run: |
+          pip install --upgrade pip
+          pip install "gru @ git+https://gitlab.com/glandepas/gru.git"
+          pip install -e ".[build]"
+
+      - name: Build with PyInstaller
+        run: pyinstaller gru.spec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
