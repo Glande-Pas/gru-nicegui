@@ -46,6 +46,18 @@ def strip_eso_colors(text: str) -> str:
     return re.sub(r'\|c[0-9A-Fa-f]{6}|\|r', '', text or '')
 
 
+def fuzzy_match(query: str, text: str) -> bool:
+    """Whether every character of `query` appears in `text`, in order but not necessarily adjacent."""
+    text = text.lower()
+    pos = 0
+    for ch in query.lower():
+        pos = text.find(ch, pos)
+        if pos == -1:
+            return False
+        pos += 1
+    return True
+
+
 def anchor_id(dir_name: str) -> str:
     """A stable, link-safe HTML id for a top-level installed addon's card."""
     return 'addon-' + re.sub(r'[^\w-]', '_', dir_name)

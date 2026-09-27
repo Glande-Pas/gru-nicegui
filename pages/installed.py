@@ -10,7 +10,7 @@ from gru_ui.state import (get_state, rescan, opt_deps, patch_updates, flash_warn
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress
-from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id
+from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_match
 
 
 def _do_remove_unused(local, remove_vars):
@@ -166,8 +166,7 @@ def installed_page():
 
             standalone = [a for a in installed if a.parent is None]
             if term:
-                filter_lower = term.lower()
-                standalone = [a for a in standalone if filter_lower in (a.title or '').lower()]
+                standalone = [a for a in standalone if fuzzy_match(term, a.title or '')]
 
             def _sort_key(a):
                 is_lib = getattr(a, 'is_lib', False) is True
