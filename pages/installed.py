@@ -143,11 +143,11 @@ def installed_page():
             for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
                 reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
                 lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
-            with ui.row().classes('w-full items-start justify-between gap-2 bg-warning/20 '
-                                  'border border-warning rounded p-2') as banner:
+            with ui.element('div').classes('relative w-full bg-warning/20 '
+                                           'border border-warning rounded p-2') as banner:
                 ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
-                  .classes('flex-grow')
-                ui.icon('close').classes('cursor-pointer').on('click', banner.delete)
+                  .classes('pr-6')
+                ui.icon('close').classes('cursor-pointer absolute top-2 right-2').on('click', banner.delete)
 
         def on_filter(e):
             filter_state['term'] = e.value or ''
