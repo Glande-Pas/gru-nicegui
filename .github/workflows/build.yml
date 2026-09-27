@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, debug]
     tags: ['*']
   workflow_dispatch:
 
@@ -59,8 +59,12 @@ jobs:
 
       - name: Install gru and gru-nicegui
         shell: bash
+        env:
+          GRU_REPO_TOKEN: ${{ secrets.GRU_REPO_TOKEN }}
         run: |
-          git clone -b "${{ github.ref_name }}" https://gitlab.com/glandepas/gru.git "$RUNNER_TEMP/gru"
+          git config --global url."https://x-access-token:${GRU_REPO_TOKEN}@github.com/Glande-Pas/".insteadOf \
+            "https://github.com/Glande-Pas/"
+          git clone -b "${{ github.ref_name }}" https://github.com/Glande-Pas/gru.git "$RUNNER_TEMP/gru"
           pip install --upgrade pip
           pip install "$RUNNER_TEMP/gru"
           pip install -e ".[build]"
