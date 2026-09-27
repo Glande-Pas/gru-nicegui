@@ -17,6 +17,10 @@ build = ["pyinstaller"]
 [project.scripts]
 gru-app = "main:run"
 
+[tool.setuptools]
+py-modules = ["main"]
+packages = ["gru_ui", "pages"]
+
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]
 build-backend = "setuptools.build_meta"
