@@ -1,6 +1,6 @@
 [project]
 name = "gru-nicegui"
-version = "0.0.0"
+version = "0.2.0"
 authors = [{name="Cimbali", email="me@cimba.li" }]
 description = "NiceGUI GUI for Gru, the ESO addon manager."
 license = "EUPL-1.2"
