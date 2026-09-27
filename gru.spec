@@ -5,6 +5,10 @@ NiceGUI's own static assets (JS/CSS/templates) are collected automatically by
 pyinstaller-hooks-contrib's hook-nicegui.py -- only our own package data needs listing here.
 """
 
+import os
+
+console = os.environ.get('GRU_CONSOLE', '1') != '0'
+
 datas = [
     ('gru_ui/assets/gru.png', 'gru_ui/assets'),
     ('gru_ui/assets/icon.png', 'gru_ui/assets'),
@@ -39,6 +43,6 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=console,
     icon='gru_ui/assets/icon.ico',  # only embeds on Windows/macOS; PyInstaller ignores it on Linux
 )
