@@ -9,9 +9,10 @@ from nicegui import run, ui
 from gru.addon import InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
-from .state import (opt_deps, rescan, flash_warning, flash_info, remove_vars_setting, logged_changes,
-                    update_pending, update_moot, set_locked, ambiguous_candidates,
+from .state import (get_state, opt_deps, rescan, flash_warning, flash_info, remove_vars_setting,
+                    logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch)
+from .themes import get_theme, DEFAULT_THEME
 
 
 class _ProgressState:
@@ -214,15 +215,20 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
         status = f'{status}, {rank}' if status else rank
 
     status_span = (
-        f' <span style="display:inline-block; font-size:0.85em; opacity:0.75">{status}</span>'
+        f' <span style="display:inline-block; font-size:0.85em; font-weight:600; opacity:0.75">{status}</span>'
         if status else ''
     )
     anchor = f' id="{anchor_id(addon.dir)}"' if is_installed and addon.parent is None else ''
+    theme = get_theme(get_state().config.get('app', 'theme', fallback=DEFAULT_THEME))
+    title_bg, title_fg, title_border = (
+        ('rgba(151,166,195,0.15)', 'inherit', 'rgba(151,166,195,0.25)') if theme['dark']
+        else (theme['secondary'], '#e8e8e8', 'rgba(255,255,255,0.12)')
+    )
     title_html = (
-        f'<div{anchor} style="background:rgba(151,166,195,0.15);'
+        f'<div{anchor} style="background:{title_bg}; color:{title_fg};'
         f'             padding:0.35rem 0.6rem; margin:-1rem -1rem 0.75rem;'
         f'             border-radius:6px 6px 0 0;'
-        f'             border-bottom:1px solid rgba(151,166,195,0.25);">'
+        f'             border-bottom:1px solid {title_border};">'
         f'  <span style="display:inline-block; font-size:1.25em; font-weight:600">{title}</span>'
         f'  {status_span}'
         f'</div>'
