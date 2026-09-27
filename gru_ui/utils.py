@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Formatting helpers, ported from gru-toga."""
 
 import locale

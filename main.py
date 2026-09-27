@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Entry point: registers every page and starts the NiceGUI server."""
 
 import importlib.resources

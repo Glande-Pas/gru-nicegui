@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Process-wide app state and shared business-logic helpers."""
 
 import concurrent.futures

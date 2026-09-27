@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Shared page chrome: header with logo, and the left nav drawer."""
 
 import importlib.resources

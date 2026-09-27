@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Reusable addon card component and the install/remove/update actions behind its buttons."""
 
 import contextlib

@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """Recent changes page: installs, updates and removals logged to changes.csv."""
 
 import datetime

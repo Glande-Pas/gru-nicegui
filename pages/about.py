@@ -1,3 +1,6 @@
+# Copyright Glande-Pas and contributors
+# Licensed under the EUPL, see LICENSE.md
+
 """About page: what Gru is, straight from gru itself (same text the CLI's `gru about` shows)."""
 
 from nicegui import ui
