@@ -5,6 +5,8 @@
 
 import io
 import pathlib
+import sys
+import traceback
 import warnings
 
 from nicegui import run, ui
@@ -200,10 +202,15 @@ def patches_page():
             n_saved = 0
             for addon in linked:
                 log.push(f'Checking {addon.title}…')
-                result = await run.io_bound(diff_addon_patch, addon, api, local)
-                if result is None:
+                try:
+                    n, text, messages = await run.io_bound(diff_addon_patch, addon, api, local)
+                except Exception as exc:
+                    print(f'Skipping {addon.dir}: failed to check for local changes', file=sys.stderr)
+                    traceback.print_exc()
+                    log.push(f'Skipped {addon.title}: {exc}')
                     continue
-                n, text = result
+                for message in messages:
+                    flash_warning(message)
                 new_text = text if n > 0 else None
 
                 patch_path = patch_dir / f'{addon.dir}.patch'

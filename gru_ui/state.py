@@ -170,28 +170,22 @@ def set_locked(addon, locked: bool):
     get_state().local.export_state()
 
 
-def diff_addon_patch(addon, api, local) -> tuple[int, str] | None:
-    """Diff `addon` against its unmodified ESOUI listing. Returns (modified-file count, diff
-    text), or None on failure (flashed)."""
-    try:
-        out = io.StringIO()
-        with local.unmodified_addon(addon.infos, addon.dir, api) as ref_addon:
-            with warnings.catch_warnings(record=True, category=UserWarning) as caught:
-                n = gru_patch.addon_diff(addon, ref_addon, out)
-        for w in caught:
-            flash_warning(str(w.message))
-    except Exception as exc:
-        flash_warning(f'Failed to check <b>{eso_colored(addon.title)}</b>: {exc}')
-        return None
-    return n, out.getvalue()
+def diff_addon_patch(addon, api, local) -> tuple[int, str, list[str]]:
+    """Diff `addon` against its unmodified ESOUI listing. Returns (modified-file count, diff text, warning messages).
+
+    Does no UI work, so it is safe to run in a worker thread; raises on failure."""
+    out = io.StringIO()
+    with local.unmodified_addon(addon.infos, addon.dir, api) as ref_addon:
+        with warnings.catch_warnings(record=True, category=UserWarning) as caught:
+            n = gru_patch.addon_diff(addon, ref_addon, out)
+    return n, out.getvalue(), [str(w.message) for w in caught]
 
 
-def save_addon_patch(addon, api, local) -> int | None:
-    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file."""
-    result = diff_addon_patch(addon, api, local)
-    if result is None:
-        return None
-    n, text = result
+def save_addon_patch(addon, api, local) -> tuple[int, list[str]]:
+    """Diff `addon` against its unmodified ESOUI listing and save/update/remove its patch file.
+
+    Returns (modified-file count, warning messages); raises on failure."""
+    n, text, messages = diff_addon_patch(addon, api, local)
 
     patch_dir = user_config(local.game)
     patch_dir.mkdir(exist_ok=True)
@@ -200,7 +194,7 @@ def save_addon_patch(addon, api, local) -> int | None:
         patch_path.write_text(text)
     elif patch_path.exists():
         patch_path.unlink()
-    return n
+    return n, messages
 
 
 def remove_vars_setting() -> str:

@@ -322,7 +322,13 @@ def _handle_lock(addon, is_locked: bool, refresh):
 
 
 def _handle_save(addon, api, local, refresh):
-    n = save_addon_patch(addon, api, local)
+    try:
+        n, messages = save_addon_patch(addon, api, local)
+    except Exception as exc:
+        flash_warning(f'Failed to check <b>{eso_colored(addon.title)}</b>: {exc}')
+        return
+    for message in messages:
+        flash_warning(message)
     if n:
         flash_info(f'Saved patch for <b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
     elif n == 0:
