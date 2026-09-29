@@ -13,8 +13,8 @@ from nicegui import run, ui
 from gru.addon import InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
-from .state import (get_state, opt_deps, rescan, flash_warning, flash_info, remove_vars_setting,
-                    logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
+from .state import (get_state, opt_deps, rescan, flash_warning, flash_info, flash_summary, flash_warnings,
+                    remove_vars_setting, logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch)
 from .themes import get_theme, DEFAULT_THEME
 
@@ -349,8 +349,7 @@ def _do_remove(addon: InstalledAddon, local, remove_vars: bool = False):
     title = addon.title or addon.dir
     with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
         local.remove(addon, remove_vars=remove_vars)
-    for w in caught:
-        flash_warning(str(w.message))
+    flash_warnings(caught)
     rescan()
     flash_info(f'Removed: <b>{eso_colored(title)}</b>')
 
@@ -385,12 +384,11 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
             return caught
 
         caught = await run.io_bound(work)
-    for w in caught:
-        flash_warning(str(w.message))
+    flash_warnings(caught)
     rescan()
-    for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower()):
-        if a.dir not in before:
-            flash_info(f'Installed: <b>{eso_colored(a.title or a.dir)}</b> {a.version}')
+    flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
+                                for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
+                                if a.dir not in before])
     refresh()
 
 
@@ -417,15 +415,17 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
             return caught
 
         caught = await run.io_bound(work)
-    for w in caught:
-        flash_warning(str(w.message))
+    flash_warnings(caught)
     rescan()
     after = {a.folder: (a.title, a.version) for a in local.installed}
+    installed, updated = [], []
     for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):
         if folder not in before:
-            flash_info(f'Installed: <b>{eso_colored(title)}</b> {v_after}')
+            installed.append(f'<b>{eso_colored(title)}</b> {v_after}')
         elif before[folder][1] != v_after:
-            flash_info(f'Updated: <b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+            updated.append(f'<b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+    flash_summary('Installed', installed)
+    flash_summary('Updated', updated)
     refresh()
 
 

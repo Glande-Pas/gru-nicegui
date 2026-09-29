@@ -15,7 +15,8 @@ from gru import patch as gru_patch
 from gru.patch import PatchError
 from gru.config import user_config, encoding_open
 from gru_ui import shell
-from gru_ui.state import get_state, flash_warning, flash_info, logged_changes, rescan, diff_addon_patch
+from gru_ui.state import (get_state, flash_warning, flash_info, flash_summary, flash_warnings, logged_changes, rescan,
+                          diff_addon_patch)
 from gru_ui.utils import eso_colored
 from gru_ui.components import global_progress, progress_factory
 
@@ -106,8 +107,7 @@ async def _do_revert(addon, api, local, refresh):
             return caught
 
         caught = await run.io_bound(work)
-    for w in caught:
-        flash_warning(str(w.message))
+    flash_warnings(caught)
     rescan()
     flash_info(f'Reverted: <b>{eso_colored(title)}</b> to the installed ESOUI version')
     refresh()
@@ -227,7 +227,7 @@ def patches_page():
                 log = ui.log(max_lines=50).classes('w-full h-48')
             dialog.open()
 
-            n_saved = 0
+            saved, warned = [], []
             for addon in linked:
                 log.push(f'Checking {addon.title}…')
                 try:
@@ -237,8 +237,7 @@ def patches_page():
                     traceback.print_exc()
                     log.push(f'Skipped {addon.title}: {exc}')
                     continue
-                for message in messages:
-                    flash_warning(message)
+                warned += messages
                 new_text = text if n > 0 else None
 
                 patch_path = patch_dir / f'{addon.dir}.patch'
@@ -261,12 +260,15 @@ def patches_page():
                 if new_text is not None:
                     patch_dir.mkdir(exist_ok=True)
                     patch_path.write_text(new_text)
-                    flash_info(f'Saved patch for <b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
-                    n_saved += 1
+                    saved.append(f'<b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
                 else:
                     patch_path.unlink(missing_ok=True)
             dialog.close()
-            flash_info(f'Done — {n_saved} patch(es) saved.')
+            flash_summary('Warnings', list(dict.fromkeys(warned)), flash_warning)
+            if saved:
+                flash_summary('Saved patches', saved)
+            else:
+                flash_info('Done — no patches saved.')
             body.refresh()
 
         with ui.row().classes('w-full items-center gap-2'):

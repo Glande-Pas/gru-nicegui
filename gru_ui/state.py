@@ -18,7 +18,6 @@ from gru.config import load_config, save_config, user_config
 from gru.api import API, AmbiguousDirectory
 from gru.install import Folder
 
-from .utils import eso_colored
 
 GAME = 'ESO'
 
@@ -55,6 +54,19 @@ def flash_warning(message: str):
 
 def flash_info(message: str):
     ui.notify(f'ℹ️ {message}', type='info', html=True, multi_line=True, close_button=True)
+
+
+def flash_summary(heading: str, items: list[str], flash=flash_info):
+    """One notification for a whole batch, e.g. 'Updated (3):' followed by one line per item."""
+    if len(items) == 1:
+        flash(f'{heading}: {items[0]}')
+    elif items:
+        flash(f'{heading} ({len(items)}):<br/>' + '<br/>'.join(f'• {item}' for item in items))
+
+
+def flash_warnings(caught):
+    """Merge the warnings recorded by warnings.catch_warnings() into a single notification."""
+    flash_summary('Warnings', list(dict.fromkeys(str(w.message) for w in caught)), flash_warning)
 
 
 def rescan():

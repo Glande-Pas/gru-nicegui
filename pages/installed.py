@@ -9,7 +9,7 @@ from collections import defaultdict
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, rescan, opt_deps, patch_updates, flash_warning, flash_info,
+from gru_ui.state import (get_state, rescan, opt_deps, patch_updates, flash_summary, flash_warnings,
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress
@@ -20,12 +20,11 @@ def _do_remove_unused(local, remove_vars):
     before = {a.dir: a.title for a in local.installed}
     with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
         local.remove_unused_deps(opt=opt_deps(), remove_vars=remove_vars)
-    for w in caught:
-        flash_warning(str(w.message))
+    flash_warnings(caught)
     rescan()
     after = {a.dir for a in local.installed}
-    for dir_ in sorted(before.keys() - after, key=lambda d: (before[d] or d).lower()):
-        flash_info(f'Removed: <b>{eso_colored(before[dir_] or dir_)}</b>')
+    flash_summary('Removed', [f'<b>{eso_colored(before[dir_] or dir_)}</b>'
+                              for dir_ in sorted(before.keys() - after, key=lambda d: (before[d] or d).lower())])
 
 
 def _open_confirm_remove_unused(local, with_vars, refresh):
@@ -98,15 +97,17 @@ def installed_page():
                     return caught
 
                 caught = await run.io_bound(work)
-            for w in caught:
-                flash_warning(str(w.message))
+            flash_warnings(caught)
             rescan()
             after = {a.folder: (a.title, a.version) for a in local.installed}
+            installed_now, updated = [], []
             for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):
                 if folder not in before:
-                    flash_info(f'Installed: <b>{eso_colored(title)}</b> {v_after}')
+                    installed_now.append(f'<b>{eso_colored(title)}</b> {v_after}')
                 elif before[folder][1] != v_after:
-                    flash_info(f'Updated: <b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+                    updated.append(f'<b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+            flash_summary('Installed', installed_now)
+            flash_summary('Updated', updated)
             body.refresh()
 
         async def install_missing():
@@ -120,12 +121,11 @@ def installed_page():
                     return caught
 
                 caught = await run.io_bound(work)
-            for w in caught:
-                flash_warning(str(w.message))
+            flash_warnings(caught)
             rescan()
-            for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower()):
-                if a.dir not in before:
-                    flash_info(f'Installed: <b>{eso_colored(a.title or a.dir)}</b> {a.version}')
+            flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
+                                        for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
+                                        if a.dir not in before])
             body.refresh()
 
         def remove_unused():
