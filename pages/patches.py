@@ -9,7 +9,7 @@ import sys
 import traceback
 import warnings
 
-from nicegui import run, ui
+from nicegui import background_tasks, run, ui
 
 from gru import patch as gru_patch
 from gru.patch import PatchError
@@ -64,6 +64,34 @@ def _patch_status(addon, patch_path: pathlib.Path) -> str | None:
         if not all(values):
             return 'conflict'
     return 'applied' if applied else 'pending'
+
+
+def _safe_patch_status(addon, patch_path: pathlib.Path) -> str | None:
+    try:
+        return _patch_status(addon, patch_path)
+    except Exception:
+        print(f'Failed to check whether {patch_path.name} is applied', file=sys.stderr)
+        traceback.print_exc()
+        return None
+
+
+async def _check_statuses(checks):
+    """Fill in each patch card's status off the event loop, enabling its buttons once known."""
+    for addon, patch_path, summary, label, apply_btn, revert_btn in checks:
+        pstatus = await run.io_bound(_safe_patch_status, addon, patch_path)
+        if label.is_deleted:  # page was refreshed or closed; a newer check has taken over
+            return
+        label.set_content(summary + {
+            'applied': '  ·  ✅ Already applied',
+            'conflict': "  ·  ⚠️ Doesn't match current files",
+            None: '  ·  ❓ Status unknown',
+        }.get(pstatus, ''))
+        if pstatus == 'applied':
+            apply_btn.set_visibility(False)
+            revert_btn.set_visibility(True)
+            revert_btn.set_enabled(addon.infos is not None)
+        else:
+            apply_btn.enable()
 
 
 async def _do_revert(addon, api, local, refresh):
@@ -270,6 +298,8 @@ def patches_page():
             ui.label('No saved patches found.')
             return
 
+        pending_checks = []
+
         for patch_file in patches:
             text = patch_file.read_text(errors='replace')
 
@@ -290,32 +320,29 @@ def patches_page():
             n_files = sum(1 for line in diff_body.splitlines() if line.startswith('--- '))
 
             addon = next((a for a in local.installed if a.dir == patch_file.stem), None)
-            pstatus = _patch_status(addon, patch_file) if addon else None
-            status_suffix = {
-                'applied': '  ·  ✅ Already applied',
-                'conflict': "  ·  ⚠️ Doesn't match current files",
-            }.get(pstatus, '')
+            summary = (f'<b>{eso_colored(addon_name)}</b> — v{version}  ·  {date}  ·  '
+                       f'{n_files} file(s) modified')
 
             with ui.card().classes('w-full'):
                 with ui.row().classes('w-full items-center gap-2'):
-                    ui.html(f'<b>{eso_colored(addon_name)}</b> — v{version}  ·  {date}  ·  '
-                            f'{n_files} file(s) modified{status_suffix}').classes('flex-grow')
+                    label = ui.html(summary + ('  ·  ⏳ Checking…' if addon else '')).classes('flex-grow')
 
-                    if pstatus == 'applied':
-                        revert_btn = ui.button(
-                            '↩️ Revert',
-                            on_click=lambda a=addon, pf=patch_file: _do_revert(a, api, local, body.refresh))
-                        revert_btn.set_enabled(addon.infos is not None)
+                    apply_btn = ui.button(
+                        '▶️ Apply',
+                        on_click=lambda a=addon, pf=patch_file: _try_apply_patch(a, pf, body.refresh))
+                    apply_btn.disable()
+                    if addon is None:
+                        apply_btn.tooltip("Add-on isn't installed")
+
+                    revert_btn = ui.button(
+                        '↩️ Revert',
+                        on_click=lambda a=addon: _do_revert(a, api, local, body.refresh))
+                    revert_btn.set_visibility(False)
+                    if addon is not None:
                         revert_btn.tooltip('Reinstalls from ESOUI, discarding these changes -- not a '
                                            'hunk-by-hunk undo' if addon.infos else
                                            "Add-on isn't matched to an ESOUI listing")
-                    else:
-                        apply_btn = ui.button(
-                            '▶️ Apply',
-                            on_click=lambda a=addon, pf=patch_file: _try_apply_patch(a, pf, body.refresh))
-                        apply_btn.set_enabled(addon is not None)
-                        if addon is None:
-                            apply_btn.tooltip("Add-on isn't installed")
+                        pending_checks.append((addon, patch_file, summary, label, apply_btn, revert_btn))
 
                     ui.button('⬇️ Download',
                               on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n))
@@ -328,5 +355,7 @@ def patches_page():
 
                 with ui.expansion('Show diff'):
                     ui.code(diff_body, language='diff').classes('w-full')
+
+        background_tasks.create(_check_statuses(pending_checks), name='patch-status')
 
     body()
