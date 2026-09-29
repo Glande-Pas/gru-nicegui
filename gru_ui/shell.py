@@ -1,9 +1,10 @@
 # Copyright Glande-Pas and contributors
 # Licensed under the EUPL, see LICENSE.md
 
-"""Shared page chrome: header with logo, and the left nav drawer."""
+"""Shared page chrome: header with logo and the left nav drawer, built once around the app's pages."""
 
 import importlib.resources
+from collections.abc import Callable
 
 from nicegui import ui
 
@@ -57,8 +58,19 @@ ui.button.default_props('text-color=#1a1a1a dense')
 ui.button.default_style('color: #1a1a1a !important')
 
 
-def frame(active: str):
-    """Add the header + left nav drawer to the current page. Call first, then add page content."""
+_ROUTES: dict[str, Callable[[], None]] = {}
+
+
+def page(path: str):
+    """Register a page's content builder. Pages are shown inside the shared frame built once by root()."""
+    def decorator(builder: Callable[[], None]) -> Callable[[], None]:
+        _ROUTES[path] = builder
+        return builder
+    return decorator
+
+
+def root():
+    """The app's single real page: header and left nav drawer, with the registered pages below them."""
     theme_name = get_state().config.get('app', 'theme', fallback=DEFAULT_THEME)
     theme = get_theme(theme_name)
 
@@ -74,18 +86,29 @@ def frame(active: str):
             ui.label('Gru').classes('text-h5')
     drawer_toggle.style('color: white !important')
 
+    nav_rows = {}
     with ui.left_drawer().classes('items-stretch') as drawer:
         for path, icon, title in _PAGES:
             with ui.link(target=path).classes('no-underline'):
-                row = ui.row().classes('items-center gap-2 w-full p-2 rounded ' +
-                                       ('bg-primary text-black font-medium' if path == active
-                                        else 'hover:bg-gray-500/20'))
-                if path != active:
-                    row.style(f'color: {theme["link"]}')
-                with row:
+                with ui.row().classes('items-center gap-2 w-full p-2 rounded') as nav_rows[path]:
                     ui.label(icon)
                     ui.label(title)
         with ui.column().classes('w-full flex-grow min-h-0 overflow-hidden'):
             ui.image(str(_LOGO)).classes('w-full').props('fit=cover position=top')
 
-    ui.page_title(f'Gru — {dict((p, t) for p, _, t in _PAGES).get(active, "")}')
+    def show_active(path: str):
+        active = path.split('?', 1)[0].split('#', 1)[0] or '/'
+        for page_path, row in nav_rows.items():
+            if page_path == active:
+                row.classes(add='bg-primary text-black font-medium', remove='hover:bg-gray-500/20')
+                row.style(replace='')
+            else:
+                row.classes(add='hover:bg-gray-500/20', remove='bg-primary text-black font-medium')
+                row.style(replace=f'color: {theme["link"]}')
+        ui.page_title(f'Gru — {dict((p, t) for p, _, t in _PAGES).get(active, "")}')
+
+    router = ui.context.client.sub_pages_router
+    router.on_path_changed(show_active)
+    show_active(router.current_path)
+
+    ui.sub_pages(_ROUTES)

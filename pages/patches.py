@@ -186,9 +186,8 @@ def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathli
         refresh()
 
 
-@ui.page('/patches')
+@shell.page('/patches')
 def patches_page():
-    shell.frame('/patches')
     state = get_state()
     local = state.local
     api = state.api

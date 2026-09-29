@@ -19,9 +19,8 @@ def _version(package: str) -> str:
         return 'unknown'
 
 
-@ui.page('/about')
+@shell.page('/about')
 def about_page():
-    shell.frame('/about')
     ui.markdown(ABOUT)
     ui.separator()
     ui.label(f'gru-nicegui {_version("gru-nicegui")}  ·  gru {_version("gru")}').classes('text-caption')

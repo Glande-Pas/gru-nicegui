@@ -55,9 +55,8 @@ def _warning_banner(addons, heading: str):
         ui.icon('close').classes('cursor-pointer absolute top-2 right-2').on('click', banner.delete)
 
 
-@ui.page('/')
+@shell.page('/')
 def installed_page():
-    shell.frame('/')
     state = get_state()
     api = state.api
     local = state.local

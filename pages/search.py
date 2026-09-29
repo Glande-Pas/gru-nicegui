@@ -10,9 +10,8 @@ from gru_ui.state import get_state, sortkey, poll_ambiguous_resolution
 from gru_ui.components import addon_card
 
 
-@ui.page('/search')
+@shell.page('/search')
 def search_page():
-    shell.frame('/search')
     state = get_state()
     api = state.api
     local = state.local

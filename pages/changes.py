@@ -28,9 +28,8 @@ def _change(entry) -> str:
     return '⬆️ Updated'
 
 
-@ui.page('/changes')
+@shell.page('/changes')
 def changes_page():
-    shell.frame('/changes')
     state = get_state()
     local = state.local
 

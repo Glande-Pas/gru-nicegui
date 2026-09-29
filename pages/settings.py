@@ -52,9 +52,8 @@ def _addons_directory():
     ui.button('✅ Apply directory', on_click=apply_directory)
 
 
-@ui.page('/settings')
+@shell.page('/settings')
 def settings_page():
-    shell.frame('/settings')
     state = get_state()
     config = state.config
 
