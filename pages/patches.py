@@ -353,8 +353,13 @@ def patches_page():
 
                     ui.button('🗑️ Delete', on_click=delete)
 
-                with ui.expansion('Show diff'):
-                    ui.code(diff_body, language='diff').classes('w-full')
+                # Highlighting every diff up front makes the page slow to load: render on first open
+                def show_diff(e, diff=diff_body):
+                    if e.value and not e.sender.default_slot.children:
+                        with e.sender:
+                            ui.code(diff, language='diff').classes('w-full')
+
+                ui.expansion('Show diff', on_value_change=show_diff)
 
         background_tasks.create(_check_statuses(pending_checks), name='patch-status')
 
