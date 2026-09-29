@@ -45,6 +45,17 @@ def _open_confirm_remove_unused(local, with_vars, refresh):
     dialog.open()
 
 
+def _warning_banner(addons, heading: str):
+    """A dismissable warning box listing `addons`, linking to their cards."""
+    if not addons:
+        return
+    lines = [f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)})'
+             for a in sorted(addons, key=lambda a: (a.title or a.dir).lower())]
+    with ui.element('div').classes('relative w-full bg-warning/20 border border-warning rounded p-2') as banner:
+        ui.markdown(f'**{len(addons)} {heading}**\n' + '\n'.join(lines)).classes('pr-6')
+        ui.icon('close').classes('cursor-pointer absolute top-2 right-2').on('click', banner.delete)
+
+
 @ui.page('/')
 def installed_page():
     shell.frame('/')
@@ -141,16 +152,9 @@ def installed_page():
                 ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
                 ui.button('🔄 Refresh', on_click=refresh_all)
 
-        if unmatched:
-            lines = []
-            for a in sorted(unmatched, key=lambda a: (a.title or a.dir).lower()):
-                reason = 'matches several ESOUI add-ons' if a in ambiguous else 'not found on ESOUI'
-                lines.append(f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)}) — {reason}')
-            with ui.element('div').classes('relative w-full bg-warning/20 '
-                                           'border border-warning rounded p-2') as banner:
-                ui.markdown(f"**{len(unmatched)} add-on(s) couldn't be matched online:**\n" + '\n'.join(lines)) \
-                  .classes('pr-6')
-                ui.icon('close').classes('cursor-pointer absolute top-2 right-2').on('click', banner.delete)
+        not_found = [a for a in unmatched if a not in ambiguous]
+        _warning_banner(ambiguous, "add-on(s) match several ESOUI add-ons — pick the right one on each card:")
+        _warning_banner(not_found, "add-on(s) weren't found on ESOUI and can't be updated:")
 
         def on_filter(e):
             filter_state['term'] = e.value or ''
