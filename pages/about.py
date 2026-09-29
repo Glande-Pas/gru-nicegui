@@ -12,7 +12,16 @@ from gru_ui import shell
 from gru_ui.components import external_link
 
 
+try:
+    # Written by gru.spec: a frozen build has no package metadata to read
+    from gru_ui._build_version import VERSIONS
+except ImportError:
+    VERSIONS = {}
+
+
 def _version(package: str) -> str:
+    if package in VERSIONS:
+        return VERSIONS[package]
     try:
         return importlib.metadata.version(package)
     except importlib.metadata.PackageNotFoundError:
@@ -27,4 +36,3 @@ def about_page():
     with ui.row().classes('items-center gap-1'):
         ui.label('Licensed under the').classes('text-caption')
         external_link('EUPL-1.2', 'https://joinup.ec.europa.eu/software/page/eupl', style='font-size:0.85em')
-        ui.label('— see LICENSE.md for the full text.').classes('text-caption')

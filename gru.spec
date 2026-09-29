@@ -1,13 +1,23 @@
 # vim: set ft=python:
-"""PyInstaller spec: bundles gru-nicegui into a single standalone executable.
+"""PyInstaller spec: bundles gru-nicegui into a single standalone executable."""
 
-NiceGUI's own static assets (JS/CSS/templates) are collected automatically by
-pyinstaller-hooks-contrib's hook-nicegui.py -- only our own package data needs listing here.
-"""
-
+import importlib.metadata
+import pathlib
 import os
 
 console = os.environ.get('GRU_CONSOLE', '1') != '0'
+
+
+build_versions = pathlib.Path(SPECPATH) / 'gru_ui' / '_build_version.py'  # noqa: F821 -- defined by PyInstaller
+if not build_versions.exists():
+    versions = {
+        'gru-nicegui': importlib.metadata.version('gru-nicegui'),
+        'gru': importlib.metadata.version('gru'),
+    }
+    with build_versions.open('w') as f:  # noqa: F821
+        f.write(f'VERSIONS = {versions!r}\n')
+
+    print('Detected versions:', versions)
 
 datas = [
     ('gru_ui/assets/gru.png', 'gru_ui/assets'),

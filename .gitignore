@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Versions baked into the binary, written by gru.spec at build time
+gru_ui/_build_version.py

@@ -19,7 +19,10 @@ jobs:
             artifact-path: dist/gru.exe
     runs-on: ${{ matrix.os }}
     steps:
+      # Full history and tags, for gru.spec's `git describe` of non-release builds
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
@@ -34,13 +37,21 @@ jobs:
             libgtk-3-0 libwebkit2gtk-4.1-0 gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
             libgirepository1.0-dev libcairo2-dev pkg-config gcc python3-dev
 
-      # gru isn't on PyPI -- install it first so pip finds it already satisfied when it
-      # resolves gru-nicegui's own "gru" dependency, instead of trying PyPI and failing.
       - name: Install gru and gru-nicegui
+        shell: bash
         run: |
+          git clone -b "${{ github.ref_name }}" https://gitlab.com/glandepas/gru.git "$RUNNER_TEMP/gru"
           pip install --upgrade pip
-          pip install "gru @ git+https://gitlab.com/glandepas/gru.git"
+          pip install "$RUNNER_TEMP/gru"
           pip install -e ".[build]"
+
+      - name: Describe versions from git
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        run: |
+          gru=$(git -C "$RUNNER_TEMP/gru" describe --tags --long --always --dirty)
+          ui=$(git describe --tags --long --always --dirty)
+          printf 'VERSIONS = {"gru-nicegui": "%s", "gru": "%s"}\n' "$ui" "$gru" > gru_ui/_build_version.py
 
       - name: Build with PyInstaller
         env:
