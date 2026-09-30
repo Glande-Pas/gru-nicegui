@@ -46,7 +46,7 @@ jobs:
           pip install -e ".[build]"
 
       - name: Describe versions from git
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.ref_type != 'tag' }}
         shell: bash
         run: |
           gru=$(git -C "$RUNNER_TEMP/gru" describe --tags --long --always --dirty)
@@ -55,10 +55,19 @@ jobs:
 
       - name: Build with PyInstaller
         env:
-          GRU_CONSOLE: ${{ startsWith(github.ref, 'refs/tags/') && '0' || '1' }}
+          GRU_CONSOLE: ${{ github.ref_type == 'tag' && '0' || '1' }}
         run: pyinstaller gru.spec
 
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
+
+      - name: Upload to GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: ${{ matrix.artifact-path }}
