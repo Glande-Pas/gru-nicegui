@@ -24,6 +24,7 @@ _ICON_ICO = importlib.resources.files('gru_ui').joinpath('assets', 'icon.ico')
 def run():
     # Read by Windows WinForms backend, and throws if it isn't a real .ico
     app.native.start_args['icon'] = str(_ICON_ICO)
+    app.native.settings['ALLOW_DOWNLOADS'] = True
     ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=THEMES[DEFAULT_THEME]['dark'], reload=False,
            native=True, window_size=(1400, 900))
 

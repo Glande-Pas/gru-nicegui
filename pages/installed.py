@@ -3,6 +3,7 @@
 
 """Installed add-ons page."""
 
+import io
 import warnings
 from collections import defaultdict
 
@@ -136,6 +137,11 @@ def installed_page():
                 _do_remove_unused(local, lambda addon: setting == 'yes')
                 body.refresh()
 
+        def export_list():
+            out = io.StringIO()
+            local.write_csv(out)
+            ui.download(out.getvalue().encode(), 'addons.csv', 'text/csv')
+
         def refresh_all():
             rescan()
             body.refresh()
@@ -150,6 +156,7 @@ def installed_page():
                 ui.button('⬇️ Install missing', on_click=install_missing).set_enabled(bool(missing))
                 ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
                 ui.button('🔄 Refresh', on_click=refresh_all)
+                ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
 
         not_found = [a for a in unmatched if a not in ambiguous]
         _warning_banner(ambiguous, "add-on(s) match several ESOUI add-ons — pick the right one on each card:")
