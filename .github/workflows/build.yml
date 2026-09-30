@@ -22,9 +22,11 @@ jobs:
           - os: windows-latest
             artifact-name: gru-windows
             artifact-path: dist/gru.exe
+            msix-arch: x64
           - os: windows-11-arm
             artifact-name: gru-windows-arm64
             artifact-path: dist/gru.exe
+            msix-arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
       # Full history and tags, for gru.spec's `git describe` of non-release builds
@@ -70,6 +72,25 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
+
+      - name: Package MSIX
+        if: runner.os == 'Windows'
+        run: python packaging/msix/build_msix.py dist/gru.exe ${{ matrix.msix-arch }} dist/gru-${{ matrix.msix-arch }}.msix
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Windows'
+        with:
+          name: ${{ matrix.artifact-name }}-msix
+          path: dist/gru-${{ matrix.msix-arch }}.msix
+
+      - name: Collect release files with non-clashing names
+        if: ${{ github.ref_type == 'tag' }}
+        shell: bash
+        run: |
+          mkdir -p dist/release
+          path='${{ matrix.artifact-path }}'
+          [[ "$path" == *.exe ]] && ext='.exe' || ext=''
+          cp "$path" "dist/release/${{ matrix.artifact-name }}$ext"
 
       - name: Upload to GitHub Release
         if: ${{ github.ref_type == 'tag' }}
