@@ -9,13 +9,21 @@ on:
 jobs:
   build:
     strategy:
+      # One platform failing (e.g. a dependency without wheels for it) shouldn't cancel the others
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             artifact-name: gru-linux
             artifact-path: dist/gru
+          - os: ubuntu-24.04-arm
+            artifact-name: gru-linux-arm64
+            artifact-path: dist/gru
           - os: windows-latest
             artifact-name: gru-windows
+            artifact-path: dist/gru.exe
+          - os: windows-11-arm
+            artifact-name: gru-windows-arm64
             artifact-path: dist/gru.exe
     runs-on: ${{ matrix.os }}
     steps:
