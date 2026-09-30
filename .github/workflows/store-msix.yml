@@ -1,0 +1,25 @@
+name: Store MSIX to release
+
+# Attach the Microsoft Store-signed MSIX packages to the GitHub release of the same version: the action finds the
+# Store's latest package version (e.g. 0.3.0.0) and uploads to the release whose tag contains its first three numbers
+# (e.g. v0.3.0), skipping files the release already has. Store certification can lag behind the release: re-run it
+# manually (workflow_dispatch) once the Store has published the new version.
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # upload release assets
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit: third-party code running with write access to releases (v1 = v1.0.2 = this commit)
+      - uses: JasonWei512/Upload-Microsoft-Store-MSIX-Package-to-GitHub-Release@80b980b3065f16557b6c450e9efe2144344b589f
+        with:
+          store-id: 9P1251PBNJMM
+          token: ${{ secrets.GITHUB_TOKEN }}
+          asset-name-pattern: gru_{version}_{arch}
