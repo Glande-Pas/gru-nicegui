@@ -26,10 +26,7 @@ def search_page():
     def results(term: str):
         if not term:
             return
-        found = api.search(term, maxlen=20)
-        key = sortkey()
-        if key:
-            found.sort(key=lambda a: a.metadata.get(key, 0), reverse=True)
+        found = api.search(term, tiebreakattr=sortkey(), maxlen=20)
 
         if not found:
             ui.label('No results found.')

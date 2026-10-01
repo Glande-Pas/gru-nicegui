@@ -14,7 +14,7 @@ from gru_ui.state import (get_state, rescan, opt_deps, patch_updates, flash_summ
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress
-from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_match
+from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_score
 
 
 def _do_remove_unused(local, remove_vars):
@@ -178,8 +178,9 @@ def installed_page():
                     children_map[a.parent].append(a)
 
             standalone = [a for a in installed if a.parent is None]
+            scores = {a: fuzzy_score(term, a.title or a.dir) for a in standalone} if term else {}
             if term:
-                standalone = [a for a in standalone if fuzzy_match(term, a.title or '')]
+                standalone = [a for a in standalone if scores[a] is not None]
 
             def _sort_key(a):
                 is_lib = getattr(a, 'is_lib', False) is True
@@ -193,7 +194,8 @@ def installed_page():
                     prio = 3
                 else:
                     prio = 4
-                return (prio, (a.title or a.dir).lower())
+                # When filtering, how well the title matches comes first
+                return (scores.get(a, ()), prio, (a.title or a.dir).lower())
 
             for addon in sorted(standalone, key=_sort_key):
                 children = children_map.get(addon)

@@ -49,16 +49,20 @@ def strip_eso_colors(text: str) -> str:
     return re.sub(r'\|c[0-9A-Fa-f]{6}|\|r', '', text or '')
 
 
-def fuzzy_match(query: str, text: str) -> bool:
-    """Whether every character of `query` appears in `text`, in order but not necessarily adjacent."""
+def fuzzy_score(query: str, text: str) -> tuple[int, int, int] | None:
+    """How well `query` matches `text`, lower is better, or None if it doesn't match at all. """
     text = text.lower()
-    pos = 0
+    search_pos = 0
+    gaps = []
     for ch in query.lower():
-        pos = text.find(ch, pos)
-        if pos == -1:
-            return False
-        pos += 1
-    return True
+        ch_pos = text.find(ch, search_pos)
+        if ch_pos == -1:
+            return None
+        if ch_pos != search_pos:
+            gaps.append(ch_pos - search_pos)
+        search_pos = ch_pos + 1
+    # penalize for: nb of separate match words, distance in between matches, nb letters un-matched
+    return len(gaps), sum(gaps), len(query) - len(text)
 
 
 def anchor_id(dir_name: str) -> str:
