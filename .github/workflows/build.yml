@@ -39,6 +39,16 @@ jobs:
           python-version: '3.13'
           cache: pip
 
+      - name: Check the tag matches pyproject.toml's version
+        if: ${{ github.ref_type == 'tag' }}
+        shell: bash
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [[ "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match pyproject.toml's version $version"
+            exit 1
+          fi
+
       - name: Install GTK/WebKit (pywebview's Linux backend)
         if: runner.os == 'Linux'
         run: |
