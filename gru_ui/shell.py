@@ -111,4 +111,4 @@ def root():
     router.on_path_changed(show_active)
     show_active(router.current_path)
 
-    ui.sub_pages(_ROUTES)
+    ui.sub_pages(_ROUTES).classes('w-full')
