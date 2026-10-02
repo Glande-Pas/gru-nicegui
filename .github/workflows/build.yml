@@ -110,3 +110,38 @@ jobs:
           tag_name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
           files: ${{ matrix.artifact-path }}
+
+  # Submit both architectures' MSIX to the Microsoft Store as one bundle using repo secrets
+  store-submit:
+    needs: build
+    if: ${{ github.ref_type == 'tag' }}
+    runs-on: windows-latest
+    permissions:
+      contents: read  # checkout
+      actions: read   # download this run's MSIX artifacts
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Bundle the MSIX packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern '*-msix' --dir msix
+          python packaging/msix/build_msix.py bundle store/gru.msixbundle msix/*/*.msix
+
+      - uses: microsoft/microsoft-store-apppublisher@v1.4
+      - name: Submit to the Microsoft Store
+        env:
+          TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+        run: |
+          msstore reconfigure --tenantId $env:TENANT_ID --sellerId $env:SELLER_ID `
+            --clientId $env:CLIENT_ID --clientSecret $env:CLIENT_SECRET
+          msstore publish store --inputFile store/gru.msixbundle --appId 9P1251PBNJMM

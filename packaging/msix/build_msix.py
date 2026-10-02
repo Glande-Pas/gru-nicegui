@@ -5,6 +5,8 @@
 """Package the PyInstaller-built gru.exe as an unsigned MSIX for the Microsoft Store, which re-signs it.
 
 Usage: build_msix.py EXE ARCH OUTPUT, e.g. build_msix.py dist/gru.exe x64 dist/gru-x64.msix
+       build_msix.py bundle OUTPUT MSIX..., e.g. build_msix.py bundle dist/gru.msixbundle dist/gru-*.msix
+       (one .msixbundle of all architectures' packages, for a single Store submission)
 Needs the Windows SDK's makeappx.exe.
 """
 
@@ -58,7 +60,23 @@ def main(exe: str, arch: str, output: str) -> None:
     print(f'Packaged {output} (version {package_version()}, {arch})')
 
 
+def bundle(output: str, packages: list[str]) -> None:
+    with tempfile.TemporaryDirectory() as staging_dir:
+        for package in packages:
+            shutil.copy2(package, staging_dir)
+        pathlib.Path(output).parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([find_makeappx(), 'bundle', '/d', staging_dir, '/p', output, '/bv', package_version(), '/o'],
+                       check=True)
+    print(f'Bundled {output} (version {package_version()}) from {", ".join(packages)}')
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 4 or sys.argv[2] not in {'x64', 'arm64'}:
+    if len(sys.argv) < 4 or sys.argv[1] != 'bundle' and len(sys.argv) > 4:
         sys.exit(__doc__)
-    main(*sys.argv[1:])
+
+    if sys.argv[1] == 'bundle':
+        bundle(sys.argv[2], sys.argv[3:])
+    elif sys.argv[2] in {'x64', 'arm64'}:
+        main(*sys.argv[1:])
+    else:
+        sys.exit(__doc__)
