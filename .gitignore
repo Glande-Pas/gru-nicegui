@@ -219,3 +219,6 @@ __marimo__/
 
 # Versions baked into the binary, written by gru.spec at build time
 gru_ui/_build_version.py
+
+# Frozen per architecture before each Flatpak build, see the manifest
+packaging/flatpak/python-deps.json

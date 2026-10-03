@@ -1,7 +1,13 @@
-# Build from the repository root:
+# Build from the repository root, with gru checked out next to it. First freeze the Python dependencies for this
+# architecture, using the runtime's Python version (3.13) in a venv:
+#   pip install --quiet --dry-run --ignore-installed --report - . ../gru | jq '{
+#     name: "python-deps", buildsystem: "simple",
+#     "build-commands": ["pip3 install --no-index --no-build-isolation --no-deps --prefix=${FLATPAK_DEST} ./*"],
+#     sources: [.install[].download_info | select(.archive_info) | {type: "file", url, sha256: .archive_info.hashes.sha256}]
+#   }' > packaging/flatpak/python-deps.json
+# then:
 #   flatpak-builder --user --install --force-clean --install-deps-from=flathub \
 #     build-dir packaging/flatpak/io.github.Glande_Pas.Gru.yml
-# Regenerate python-deps.json when dependencies change: packaging/flatpak/generate_python_deps.py
 id: io.github.Glande_Pas.Gru
 runtime: org.gnome.Platform  # provides WebKitGTK and PyGObject for pywebview
 runtime-version: '50'

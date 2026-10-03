@@ -28,6 +28,8 @@ jobs:
             artifact-path: dist/gru.exe
             msix-arch: arm64
     runs-on: ${{ matrix.os }}
+    outputs:
+      msix-version: ${{ steps.version.outputs.msix }}
     steps:
       # Full history and tags, for gru.spec's `git describe` of non-release builds
       - uses: actions/checkout@v7
@@ -39,11 +41,21 @@ jobs:
           python-version: '3.13'
           cache: pip
 
-      - name: Check the tag matches pyproject.toml's version
-        if: ${{ github.ref_type == 'tag' }}
+      - name: Read pyproject.toml's version
+        id: version
         shell: bash
         run: |
           version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # MSIX wants four numbers, the last one 0 for Store submissions
+          echo "msix=$(cut -d. -f1-3 <<< "$version.0.0").0" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches pyproject.toml's version
+        if: ${{ github.ref_type == 'tag' }}
+        shell: bash
+        env:
+          version: ${{ steps.version.outputs.version }}
+        run: |
           if [[ "${GITHUB_REF_NAME#v}" != "$version" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME doesn't match pyproject.toml's version $version"
             exit 1
@@ -87,9 +99,27 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
 
+      # The x64 build also runs on arm64 runners, emulated
+      - name: Find the Windows SDK's makeappx
+        if: runner.os == 'Windows'
+        run: |
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.*\x64\makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          if (-not $makeappx) { throw 'makeappx.exe not found: the Windows SDK is required' }
+          "MAKEAPPX=$($makeappx.FullName)" >> $env:GITHUB_ENV
+
+      # Unsigned: the Microsoft Store re-signs it
       - name: Package MSIX
         if: runner.os == 'Windows'
-        run: python packaging/msix/build_msix.py dist/gru.exe ${{ matrix.msix-arch }} dist/gru-${{ matrix.msix-arch }}.msix
+        env:
+          MSIX_ARCH: ${{ matrix.msix-arch }}
+          MSIX_VERSION: ${{ steps.version.outputs.msix }}
+        run: |
+          $staging = New-Item -ItemType Directory "$env:RUNNER_TEMP\msix"
+          Copy-Item dist\gru.exe, packaging\msix\Assets $staging -Recurse
+          (Get-Content packaging\msix\AppxManifest.xml -Raw).Replace('{VERSION}', $env:MSIX_VERSION).Replace('{ARCH}', $env:MSIX_ARCH) |
+            Set-Content "$staging\AppxManifest.xml" -Encoding utf8NoBOM -NoNewline
+          & $env:MAKEAPPX pack /d $staging /p "dist\gru-$env:MSIX_ARCH.msix" /o
 
       - uses: actions/upload-artifact@v7
         if: runner.os == 'Windows'
@@ -121,22 +151,20 @@ jobs:
     if: ${{ github.ref_type == 'tag' }}
     runs-on: windows-latest
     permissions:
-      contents: read  # checkout
-      actions: read   # download this run's MSIX artifacts
+      actions: read  # download this run's MSIX artifacts
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.13'
-
       - name: Bundle the MSIX packages
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          MSIX_VERSION: ${{ needs.build.outputs.msix-version }}
         run: |
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern '*-msix' --dir msix
-          python packaging/msix/build_msix.py bundle store/gru.msixbundle msix/*/*.msix
+          gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY --pattern '*-msix' --dir "$env:RUNNER_TEMP\artifacts"
+          $packages = New-Item -ItemType Directory "$env:RUNNER_TEMP\msix"
+          Get-ChildItem "$env:RUNNER_TEMP\artifacts" -Recurse -Filter *.msix | Move-Item -Destination $packages
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.*\x64\makeappx.exe" |
+            Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1
+          New-Item -ItemType Directory store | Out-Null
+          & $makeappx.FullName bundle /d $packages /p store\gru.msixbundle /bv $env:MSIX_VERSION /o
 
       - uses: microsoft/microsoft-store-apppublisher@v1.4
       - name: Submit to the Microsoft Store
