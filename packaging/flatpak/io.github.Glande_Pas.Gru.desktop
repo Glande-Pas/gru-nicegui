@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Gru
+Comment=Elder Scrolls Online add-on manager
+Exec=gru-app
+Icon=io.github.Glande_Pas.Gru
+Terminal=false
+Categories=Game;Utility;
+Keywords=ESO;Elder Scrolls Online;addons;ESOUI;

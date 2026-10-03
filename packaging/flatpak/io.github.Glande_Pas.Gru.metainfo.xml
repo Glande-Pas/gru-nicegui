@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.Glande_Pas.Gru</id>
+  <name>Gru</name>
+  <summary>Elder Scrolls Online add-on manager</summary>
+  <developer id="io.github.glande_pas">
+    <name>Glande-Pas</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>EUPL-1.2</project_license>
+  <description>
+    <p>Get, remove and update Elder Scrolls Online (ESO) add-ons from ESOUI.com.</p>
+    <ul>
+      <li>Scans your AddOns folder for installed add-ons, so it can't forget any it installed</li>
+      <li>Keeps your own changes to add-ons as patches, re-applied across updates</li>
+    </ul>
+    <p>Gru is an independent, unofficial tool, not affiliated with ZeniMax Online Studios, Bethesda Softworks or ESOUI.</p>
+  </description>
+  <launchable type="desktop-id">io.github.Glande_Pas.Gru.desktop</launchable>
+  <url type="homepage">https://github.com/Glande-Pas/gru-nicegui</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.3.1" date="2026-10-03"/>
+  </releases>
+</component>

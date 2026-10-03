@@ -1,0 +1,44 @@
+# Build from the repository root:
+#   flatpak-builder --user --install --force-clean --install-deps-from=flathub \
+#     build-dir packaging/flatpak/io.github.Glande_Pas.Gru.yml
+# Regenerate python-deps.json when dependencies change: packaging/flatpak/generate_python_deps.py
+id: io.github.Glande_Pas.Gru
+runtime: org.gnome.Platform  # provides WebKitGTK and PyGObject for pywebview
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: gru-app
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # The game folder is wherever the user installed ESO: Steam libraries, Wine prefixes, ...
+  - --filesystem=home
+  # Share settings, patches and the change log with a gru command line tool installed outside the sandbox
+  - --filesystem=xdg-config/gru
+modules:
+  - python-deps.json
+
+  - name: gru
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-build-isolation --no-deps --prefix="${FLATPAK_DEST}" .
+    sources:
+      - type: git
+        url: https://github.com/Glande-Pas/gru.git
+        branch: debug
+
+  - name: gru-nicegui
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-build-isolation --no-deps --prefix="${FLATPAK_DEST}" .
+      - install -Dm644 packaging/flatpak/io.github.Glande_Pas.Gru.desktop -t "${FLATPAK_DEST}/share/applications"
+      - install -Dm644 packaging/flatpak/io.github.Glande_Pas.Gru.metainfo.xml -t "${FLATPAK_DEST}/share/metainfo"
+      - install -Dm644 packaging/flatpak/icon-512.png "${FLATPAK_DEST}/share/icons/hicolor/512x512/apps/io.github.Glande_Pas.Gru.png"
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - build-dir
+          - .flatpak-builder
