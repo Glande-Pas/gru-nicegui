@@ -4,10 +4,9 @@
 """Settings page."""
 
 import pathlib
-import tkinter
-import tkinter.filedialog
 
-from nicegui import ui
+import webview
+from nicegui import app, ui
 
 from gru.config import save_config
 from gru_ui import shell
@@ -15,13 +14,9 @@ from gru_ui.state import get_state, set_addons_root, GAME, flash_info
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
 
-def _browse_directory() -> str | None:
-    root = tkinter.Tk()
-    root.withdraw()
-    root.wm_attributes('-topmost', True)
-    selected = tkinter.filedialog.askdirectory(parent=root, title='Select ESO addons directory')
-    root.destroy()
-    return selected or None
+async def _browse_directory(start: str) -> str | None:
+    selected = await app.native.main_window.create_file_dialog(webview.FileDialog.FOLDER, directory=start)
+    return selected[0] if selected else None
 
 
 @ui.refreshable
@@ -33,8 +28,8 @@ def _addons_directory():
     with ui.row().classes('items-center w-full'):
         path_input = ui.input('Path', value='' if current_root == '(not set)' else current_root).classes('flex-grow')
 
-        def browse():
-            selected = _browse_directory()
+        async def browse():
+            selected = await _browse_directory(path_input.value or '')
             if selected:
                 path_input.set_value(selected)
 
