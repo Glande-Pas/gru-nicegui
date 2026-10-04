@@ -5,6 +5,7 @@ sdk: org.gnome.Sdk
 command: gru-app
 finish-args:
   - --share=network
+  - --env=PYWEBVIEW_GUI=gtk
   - --share=ipc
   - --socket=wayland
   - --socket=fallback-x11
@@ -29,3 +30,4 @@ modules:
         path: ../..
         skip:
           - .flatpak-builder
+          - build

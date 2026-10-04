@@ -126,6 +126,41 @@ jobs:
           fail_on_unmatched_files: true
           files: ${{ matrix.artifact-path }}
 
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Freeze Python dependencies
+        run: |
+          pip3 install --user flatpak-pip-generator==2026.5.28 yq
+          runtime=$(~/.local/bin/yq -r '.sdk + "//" + .["runtime-version"]' packaging/flatpak/io.github.Glande_Pas.Gru.yml)
+          ~/.local/bin/flatpak_pip_generator --pyproject-file pyproject.toml \
+            --runtime "$runtime" --output packaging/flatpak/python-deps \
+            --ignore-installed gru-eso,nicegui,requests,pywebview \
+            --prefer-wheels aiohttp,httptools,markupsafe,orjson,pydantic-core,pyyaml,unicodedata2,uvloop,watchfiles || :
+          [ -f packaging/flatpak/python-deps.json ]
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: packaging/flatpak/io.github.Glande_Pas.Gru.yml
+          arch: ${{ matrix.arch }}
+          build-dir: build/flatpak
+          repo-dir: build/repo
+          bundle: gru-${{ matrix.arch }}.flatpak
+          artifact-name: gru-linux-${{ matrix.arch }}-flatpak
+
   # Submit both architectures' MSIX to the Microsoft Store as one bundle using repo secrets
   store-submit:
     needs: build
