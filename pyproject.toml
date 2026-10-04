@@ -22,6 +22,9 @@ gru-app = "main:run"
 py-modules = ["main"]
 packages = ["gru_ui", "pages"]
 
+[tool.setuptools.package-data]
+gru_ui = ["assets/*"]
+
 [build-system]
 requires = ["setuptools >= 40.9.0", "wheel"]
 build-backend = "setuptools.build_meta"

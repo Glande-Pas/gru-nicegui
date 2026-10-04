@@ -1,0 +1,31 @@
+id: io.github.Glande_Pas.Gru
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: gru-app
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Need to access game folder wherever the user installed ESO: Steam libraries, Wine prefixes, ...
+  - --filesystem=home
+  # Share settings, patches, change log with gru CLI tool from pypi
+  # often useful for quick settings changes 'gru config set <key> <value>' instead of launching a GUI app
+  - --filesystem=xdg-config/gru
+modules:
+  - python-deps.json
+
+  - name: gru-nicegui
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-build-isolation --no-deps --prefix="${FLATPAK_DEST}" .
+      - install -Dm644 packaging/flatpak/io.github.Glande_Pas.Gru.desktop -t "${FLATPAK_DEST}/share/applications"
+      - install -Dm644 packaging/flatpak/io.github.Glande_Pas.Gru.metainfo.xml -t "${FLATPAK_DEST}/share/metainfo"
+      - install -Dm644 packaging/flatpak/icon-512.png "${FLATPAK_DEST}/share/icons/hicolor/512x512/apps/io.github.Glande_Pas.Gru.png"
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .flatpak-builder
