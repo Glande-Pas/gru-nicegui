@@ -66,10 +66,15 @@ the system's web engine. Most problems come from that engine, not from Gru.
 
 # Running from source
 
-gru isn't on PyPI, so install it first, then this package:
+If you want gru from source as well, first run:
+
 
 ```sh
-pip install -e "gru @ git+https://gitlab.com/glandepas/gru.git"
+pip install -e "gru-eso @ git+https://gitlab.com/glandepas/gru.git"
+```
+
+Then run the following:
+```sh
 pip install -e .
 gru-app
 ```

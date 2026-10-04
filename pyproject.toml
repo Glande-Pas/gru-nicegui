@@ -6,7 +6,7 @@ description = "NiceGUI GUI for Gru, the ESO addon manager."
 license = "EUPL-1.2"
 requires-python = ">=3.9"
 dependencies = [
-    "gru",
+    "gru-eso",
     "nicegui",
     "requests",
     "pywebview",
