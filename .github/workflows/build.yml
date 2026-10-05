@@ -15,17 +15,13 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact-name: gru-linux
-            artifact-path: dist/gru
           - os: ubuntu-24.04-arm
             artifact-name: gru-linux-arm64
-            artifact-path: dist/gru
           - os: windows-latest
             artifact-name: gru-windows
-            artifact-path: dist/gru.exe
             msix-arch: x64
           - os: windows-11-arm
             artifact-name: gru-windows-arm64
-            artifact-path: dist/gru.exe
             msix-arch: arm64
     runs-on: ${{ matrix.os }}
     outputs:
@@ -83,7 +79,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
+          path: dist/gru${{ runner.os == 'Windows' && '.exe' || '' }}
 
       - name: Package MSIX
         if: runner.os == 'Windows'
@@ -107,24 +103,6 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}-msix
           path: dist/gru-${{ matrix.msix-arch }}.msix
-
-      - name: Collect release files with non-clashing names
-        if: ${{ github.ref_type == 'tag' }}
-        shell: bash
-        run: |
-          mkdir -p dist/release
-          path='${{ matrix.artifact-path }}'
-          [[ "$path" == *.exe ]] && ext='.exe' || ext=''
-          cp "$path" "dist/release/${{ matrix.artifact-name }}$ext"
-
-      - name: Upload to GitHub Release
-        if: ${{ github.ref_type == 'tag' }}
-        uses: softprops/action-gh-release@v3
-        with:
-          draft: true
-          tag_name: ${{ github.ref_name }}
-          fail_on_unmatched_files: true
-          files: ${{ matrix.artifact-path }}
 
   flatpak:
     strategy:
@@ -160,6 +138,16 @@ jobs:
           repo-dir: build/repo
           bundle: gru-${{ matrix.arch }}.flatpak
           artifact-name: gru-linux-${{ matrix.arch }}-flatpak
+
+      - name: Upload to GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: gru-${{ matrix.arch }}.flatpak
+
 
   # Submit both architectures' MSIX to the Microsoft Store as one bundle using repo secrets
   store-submit:
