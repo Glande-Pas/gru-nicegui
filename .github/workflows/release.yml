@@ -1,0 +1,44 @@
+name: Store MSIX to release
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # upload release assets
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Download this tag's Python packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --branch "$TAG" \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          gh run download "$run" --repo "$GITHUB_REPOSITORY" --name python-packages --dir dist
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+        run: |
+          pip install twine
+          twine upload --skip-existing dist/*
+
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit: third-party code running with write access to releases (v1 = v1.0.2 = this commit)
+      - uses: JasonWei512/Upload-Microsoft-Store-MSIX-Package-to-GitHub-Release@80b980b3065f16557b6c450e9efe2144344b589f
+        with:
+          store-id: 9P1251PBNJMM
+          token: ${{ secrets.GITHUB_TOKEN }}
+          asset-name-pattern: gru_{version}_{arch}

@@ -63,6 +63,19 @@ jobs:
           pip install "$RUNNER_TEMP/gru"
           pip install -e ".[build]"
 
+      - name: Build Python packages
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pip install build
+          python -m build --outdir dist/python "$RUNNER_TEMP/gru"
+          python -m build --outdir dist/python
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: python-packages
+          path: dist/python/*
+
       - name: Describe versions from git
         if: ${{ github.ref_type != 'tag' }}
         shell: bash
@@ -147,7 +160,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
           files: gru-${{ matrix.arch }}.flatpak
-
 
   # Submit both architectures' MSIX to the Microsoft Store as one bundle using repo secrets
   store-submit:
