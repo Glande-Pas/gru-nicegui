@@ -14,7 +14,7 @@ from nicegui import ui
 
 from gru import patch as gru_patch
 from gru.app import log_changes, rank_candidates, find_ambiguous, resolve_exact_matches
-from gru.config import load_config, save_config, user_config
+from gru.config import root_key, load_config, save_config, user_config
 from gru.api import API, AmbiguousDirectory
 from gru.install import Folder
 
@@ -31,9 +31,19 @@ class AppState:
         self.config = load_config()
         self.api = API.live(self.config)
         self.local = None
-        root = self.config.get(f'{GAME}.addons', 'root')
-        if root and pathlib.Path(root).exists():
-            self.local = Folder(GAME, self.config)
+        self.target = self.config.get('app', 'target', fallback='live')
+        if not self.target_available(self.target):
+            self.target = 'live'
+        self.load_local()
+
+    def target_available(self, target: str) -> bool:
+        root = self.config.get(f'{GAME}.addons', root_key(target), fallback='')
+        return bool(root) and pathlib.Path(root).exists()
+
+    def load_local(self) -> None:
+        self.local = None
+        if self.target_available(self.target):
+            self.local = Folder(GAME, self.config, self.target)
             self.local.scan(self.api)
 
 
@@ -77,14 +87,30 @@ def rescan():
         spawn_ambiguous_resolution()
 
 
-def set_addons_root(path: pathlib.Path):
-    """Persist a new addons root and reinitialise the Folder."""
+def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
+    """Persist a new addons root for `target` (None clears it) and reinitialise the Folder if it's the active one."""
     state = get_state()
-    state.config.set(f'{GAME}.addons', 'root', str(path.resolve()))
+    state.config.set(f'{GAME}.addons', root_key(target), str(path.resolve()) if path else '')
     save_config(state.config)
 
-    state.local = Folder(GAME, state.config)
-    state.local.scan(state.api)
+    if target == state.target:
+        if path is None:
+            state.target = 'live'
+            state.config.set('app', 'target', 'live')
+            save_config(state.config)
+        state.load_local()
+        spawn_ambiguous_resolution()
+
+
+def set_target(target: str):
+    """Switch the active game channel, persisting the choice."""
+    state = get_state()
+    if target == state.target or not state.target_available(target):
+        return
+    state.target = target
+    state.config.set('app', 'target', target)
+    save_config(state.config)
+    state.load_local()
     spawn_ambiguous_resolution()
 
 
@@ -199,7 +225,7 @@ def save_addon_patch(addon, api, local) -> tuple[int, list[str]]:
     Returns (modified-file count, warning messages); raises on failure."""
     n, text, messages = diff_addon_patch(addon, api, local)
 
-    patch_dir = user_config(local.game)
+    patch_dir = user_config(*local.meta)
     patch_dir.mkdir(exist_ok=True)
     patch_path = patch_dir / f'{addon.dir}.patch'
     if n > 0:

@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from nicegui import ui
 
-from .state import get_state
+from .state import get_state, set_target
 from .themes import get_theme, DEFAULT_THEME
 
 _PAGES = [
@@ -84,6 +84,18 @@ def root():
             drawer_toggle = ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round')
             ui.image(str(_ICON)).classes('w-8 h-8')
             ui.label('Gru').classes('text-h5')
+        state = get_state()
+
+        def on_target_change(e):
+            set_target(e.value)
+            ui.navigate.reload()
+
+        if state.target_available('pts'):
+            with ui.row().classes('items-center gap-2'):
+                if state.target != 'live':
+                    ui.badge('PTS', color='warning').props('text-color=black')
+                ui.toggle({'live': 'Live', 'pts': 'PTS'}, value=state.target, on_change=on_target_change) \
+                    .props('dense no-caps toggle-color=primary text-color=white toggle-text-color=black')
     drawer_toggle.style('color: white !important')
 
     nav_rows = {}

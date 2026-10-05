@@ -199,7 +199,7 @@ def patches_page():
         ui.label('No addons directory configured. Go to Settings to set it up.').classes('text-warning')
         return
 
-    patch_dir = user_config(local.game)
+    patch_dir = user_config(*local.meta)
     upload_state = {'last_name': None}
 
     @ui.refreshable
