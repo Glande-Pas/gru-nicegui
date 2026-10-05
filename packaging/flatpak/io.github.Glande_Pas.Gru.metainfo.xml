@@ -29,4 +29,22 @@
   <releases>
     <release version="0.3.1" date="2026-10-03"/>
   </releases>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Installed add-ons with available updates</caption>
+      <image>https://gist.githubusercontent.com/Glande-Pas/d69a14a8676bd37a74500096162f2b00/raw/482a1f1894d3ed7b334aa9cfbadf44df830760a2/installed.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Installed add-ons in a dark theme</caption>
+      <image>https://gist.githubusercontent.com/Glande-Pas/d69a14a8676bd37a74500096162f2b00/raw/482a1f1894d3ed7b334aa9cfbadf44df830760a2/installed-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Searching add-ons on ESOUI</caption>
+      <image>https://gist.githubusercontent.com/Glande-Pas/d69a14a8676bd37a74500096162f2b00/raw/482a1f1894d3ed7b334aa9cfbadf44df830760a2/search.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Reviewing past operations made through Gru</caption>
+      <image>https://gist.githubusercontent.com/Glande-Pas/d69a14a8676bd37a74500096162f2b00/raw/482a1f1894d3ed7b334aa9cfbadf44df830760a2/review.png</image>
+    </screenshot>
+  </screenshots>
 </component>
