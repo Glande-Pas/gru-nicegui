@@ -1,0 +1,9 @@
+{
+    "io.github.Glande_Pas.Gru": [
+        "finish-args-home-filesystem-access",
+        "finish-args-unnecessary-xdg-config-gru-rw-access",
+        "metainfo-missing-screenshots",
+        "appstream-external-screenshot-url",
+        "appstream-screenshots-not-mirrored-in-ostree"
+    ]
+}

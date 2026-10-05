@@ -143,6 +143,11 @@ jobs:
             --prefer-wheels aiohttp,httptools,markupsafe,orjson,pydantic-core,pyyaml,unicodedata2,uvloop,watchfiles || :
           [ -f packaging/flatpak/python-deps.json ]
 
+      - name: Lint the manifest
+        run: |
+          flatpak-builder-lint --exceptions --user-exceptions packaging/flatpak/lint-exceptions.json \
+            manifest packaging/flatpak/io.github.Glande_Pas.Gru.yml
+
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           manifest-path: packaging/flatpak/io.github.Glande_Pas.Gru.yml
@@ -151,6 +156,9 @@ jobs:
           repo-dir: build/repo
           bundle: gru-${{ matrix.arch }}.flatpak
           artifact-name: gru-linux-${{ matrix.arch }}-flatpak
+
+      - name: Lint the build
+        run: flatpak-builder-lint --exceptions --user-exceptions packaging/flatpak/lint-exceptions.json repo build/repo
 
       - name: Upload to GitHub Release
         if: ${{ github.ref_type == 'tag' }}
