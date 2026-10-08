@@ -10,8 +10,8 @@ from collections import defaultdict
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, rescan, refresh_api, opt_deps, patch_updates, flash_summary, flash_warnings,
-                          remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
+from gru_ui.state import (get_state, rescan, rescan_async, refresh_api, opt_deps, patch_updates, flash_summary,
+                          flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress
 from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_score
@@ -97,7 +97,7 @@ def installed_page():
 
                 caught = await run.io_bound(work)
             flash_warnings(caught)
-            rescan()
+            await rescan_async()
             after = {a.folder: (a.title, a.version) for a in local.installed}
             installed_now, updated = [], []
             for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):
@@ -121,7 +121,7 @@ def installed_page():
 
                 caught = await run.io_bound(work)
             flash_warnings(caught)
-            rescan()
+            await rescan_async()
             flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
                                         for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
                                         if a.dir not in before])

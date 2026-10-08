@@ -15,8 +15,8 @@ from gru import patch as gru_patch
 from gru.patch import PatchError
 from gru.config import user_config, encoding_open
 from gru_ui import shell
-from gru_ui.state import (get_state, flash_warning, flash_info, flash_summary, flash_warnings, logged_changes, rescan,
-                          diff_addon_patch)
+from gru_ui.state import (get_state, flash_warning, flash_info, flash_summary, flash_warnings, logged_changes,
+                          rescan_async, diff_addon_patch)
 from gru_ui.utils import eso_colored
 from gru_ui.components import global_progress, progress_factory
 
@@ -108,7 +108,7 @@ async def _do_revert(addon, api, local, refresh):
 
         caught = await run.io_bound(work)
     flash_warnings(caught)
-    rescan()
+    await rescan_async()
     flash_info(f'Reverted: <b>{eso_colored(title)}</b> to the installed ESOUI version')
     refresh()
 

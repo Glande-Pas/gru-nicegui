@@ -13,7 +13,7 @@ from nicegui import run, ui
 from gru.addon import InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
-from .state import (get_state, opt_deps, rescan, flash_warning, flash_info, flash_summary, flash_warnings,
+from .state import (get_state, opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch)
 from .themes import get_theme, DEFAULT_THEME
@@ -385,7 +385,7 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
 
         caught = await run.io_bound(work)
     flash_warnings(caught)
-    rescan()
+    await rescan_async()
     flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
                                 for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
                                 if a.dir not in before])
@@ -416,7 +416,7 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
 
         caught = await run.io_bound(work)
     flash_warnings(caught)
-    rescan()
+    await rescan_async()
     after = {a.folder: (a.title, a.version) for a in local.installed}
     installed, updated = [], []
     for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):

@@ -12,7 +12,7 @@ import pathlib
 import time
 import warnings
 
-from nicegui import ui
+from nicegui import run, ui
 
 from gru import patch as gru_patch
 from gru.app import log_changes, rank_candidates, find_ambiguous, resolve_exact_matches
@@ -103,6 +103,11 @@ def rescan():
     if state.local is not None:
         state.local.scan(state.api)
         spawn_ambiguous_resolution()
+
+
+async def rescan_async():
+    """rescan() off the event loop, as it may fetch fresh ESOUI data."""
+    await run.io_bound(rescan)
 
 
 def refresh_api():
