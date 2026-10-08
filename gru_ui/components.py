@@ -172,6 +172,36 @@ def _render_meta_grid(addon, api, local):
     ).classes('w-full')
 
 
+def _dependency_link(dep, addon, local) -> None:
+    """One dependency: linked to its card on Installed Add-Ons if installed, else to a search for it."""
+    found = local.find_installed(dep)
+    if found is None:
+        ui.html(f'<a style="cursor:pointer">❌ {dep.dir}</a>').on(
+            'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip('Missing: search for it')
+        return
+    top, own_top = found, addon
+    while top.parent is not None:
+        top = top.parent
+    while own_top.parent is not None:
+        own_top = own_top.parent
+    mark = '🔄' if update_pending(found) else '✅'
+    if top is own_top:
+        ui.html(f'<span>{mark} {dep.dir}</span>')
+    else:
+        ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>')
+
+
+def _render_dependencies(addon, local, dimmed: bool) -> None:
+    for label, deps in (('Dependencies', addon.deps), ('Optional', addon.optdeps)):
+        if not deps:
+            continue
+        with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
+                .style('font-size:0.85em'):
+            ui.html(f'<span class="gru-meta-lbl">{label}</span>')
+            for dep in deps:
+                _dependency_link(dep, addon, local)
+
+
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
                dimmed: bool = False, expanded: bool = False):
     """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
@@ -274,6 +304,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                 'background:rgba(255,171,0,0.15);border:1px solid rgba(255,171,0,0.4);'
                                 'border-radius:0.4rem" title="No ESOUI add-on uses this folder name, so it '
                                 'can\'t be updated.">⚠️ Not found on ESOUI</span>')
+
+        if is_installed and local is not None:
+            _render_dependencies(addon, local, dimmed)
 
         with ui.row().classes('w-full justify-end gap-1' + dim):
             if not is_installed and has_id:
