@@ -68,7 +68,7 @@ def installed_page():
         ui.label('No addons directory configured. Go to Settings to set it up.').classes('text-warning')
         return
 
-    filter_state = {'term': ''}
+    filter_state = {'term': '', 'kind': 'all', 'libs': 'all'}
 
     @ui.refreshable
     def body():
@@ -82,8 +82,7 @@ def installed_page():
         locked = [a for a in installed if a.locked and a.parent is None]
         ambiguous = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
         unmatched = [a for a in installed if a.parent is None and a.infos is None]
-        libs = [a for a in installed if getattr(a, 'is_lib', False) is True]
-        unused = [a for a in libs if local.depcount(a) == 0]
+        unused = local.unused_deps(installed, opt=opt_deps())
         missing = local.missing_deps(installed, opt=opt_deps())
 
         async def update_all():
@@ -162,22 +161,38 @@ def installed_page():
         _warning_banner(ambiguous, "add-on(s) match several ESOUI add-ons — pick the right one on each card:")
         _warning_banner(not_found, "add-on(s) weren't found on ESOUI and can't be updated:")
 
-        def on_filter(e):
-            filter_state['term'] = e.value or ''
-            addon_list.refresh(filter_state['term'])
+        def refresh_list():
+            addon_list.refresh(filter_state['term'], filter_state['kind'], filter_state['libs'])
 
-        ui.input('Filter', placeholder='Filter installed add-ons…', value=filter_state['term'],
-                 on_change=on_filter).classes('w-full')
+        def set_filter(key):
+            def handler(e):
+                filter_state[key] = e.value or ('' if key == 'term' else 'all')
+                refresh_list()
+            return handler
+
+        toggle_props = 'no-caps dense toggle-color=primary toggle-text-color=black'
+        with ui.row().classes('w-full items-center no-wrap'):
+            ui.input('Filter', placeholder='Filter installed add-ons…', value=filter_state['term'],
+                     on_change=set_filter('term')).classes('flex-grow')
+            ui.toggle({'all': 'All', 'outdated': 'Updateable', 'unused': 'Unused'}, value=filter_state['kind'],
+                      on_change=set_filter('kind')).props(toggle_props)
+            ui.toggle({'all': 'Both', 'libs': 'Libraries', 'addons': 'Add-ons'}, value=filter_state['libs'],
+                      on_change=set_filter('libs')).props(toggle_props)
         ui.separator()
 
         @ui.refreshable
-        def addon_list(term: str):
+        def addon_list(term: str, kind: str, libs: str):
             children_map = defaultdict(list)
             for a in installed:
                 if a.parent is not None:
                     children_map[a.parent].append(a)
 
             standalone = [a for a in installed if a.parent is None]
+            if kind != 'all':
+                matching = set(can_update if kind == 'outdated' else unused)
+                standalone = [a for a in standalone if a in matching]
+            if libs != 'all':
+                standalone = [a for a in standalone if (getattr(a, 'is_lib', False) is True) == (libs == 'libs')]
             scores = {a: fuzzy_score(term, a.title or a.dir) for a in standalone} if term else {}
             if term:
                 standalone = [a for a in standalone if scores[a] is not None]
@@ -197,11 +212,20 @@ def installed_page():
                 # When filtering, how well the title matches comes first
                 return (scores.get(a, ()), prio, (a.title or a.dir).lower())
 
+            if not standalone:
+                if kind == 'unused' and libs == 'addons':
+                    ui.label('Only libraries can be marked as unused').classes('text-caption')
+                    return
+                words = [{'outdated': 'out-of-date', 'unused': 'unused'}.get(kind, ''),
+                         {'libs': 'library', 'addons': 'non-library'}.get(libs, ''), 'addons']
+                ui.label(f'No {" ".join(w for w in words if w)} to show').classes('text-caption')
+                return
+
             for addon in sorted(standalone, key=_sort_key):
                 children = children_map.get(addon)
                 addon_card(addon, api, local, body.refresh, children=children or None)
 
-        addon_list(filter_state['term'])
+        addon_list(filter_state['term'], filter_state['kind'], filter_state['libs'])
 
     body()
     ui.timer(2.0, lambda: body.refresh() if poll_ambiguous_resolution() else None)
