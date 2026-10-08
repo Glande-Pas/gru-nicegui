@@ -10,6 +10,8 @@ THEMES = {
         'secondary': '#2B2B52',
         'warning': '#FF9800',
         'link': '#FFC800',
+        'toggle_bg': '#3d3d58',
+        'toggle_fg': '#e8e8e8',
     },
     'Daylight': {
         'dark': False,
@@ -17,6 +19,8 @@ THEMES = {
         'secondary': '#2B2B52',
         'warning': '#C77700',
         'link': '#8A5A00',
+        'toggle_bg': '#dfe2ec',
+        'toggle_fg': '#1a1a1a',
     },
 }
 

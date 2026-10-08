@@ -45,6 +45,16 @@ _META_CSS = """
 a {
     color: %(link)s;
 }
+/* Unselected toggle options: distinct from both the page and the selected option */
+.gru-toggle .q-btn:not(.bg-primary) {
+    background: %(toggle_bg)s !important;
+    color: %(toggle_fg)s !important;
+}
+/* The header is always dark, whatever the theme */
+.gru-header-toggle .q-btn:not(.bg-primary) {
+    background: rgba(255, 255, 255, 0.14) !important;
+    color: white !important;
+}
 /* QUploader hardcodes white header text in its own stylesheet -- no prop reaches it. */
 .q-uploader__header {
     color: #1a1a1a !important;
@@ -74,7 +84,7 @@ def root():
     theme_name = get_state().config.get('app', 'theme', fallback=DEFAULT_THEME)
     theme = get_theme(theme_name)
 
-    ui.add_head_html(f'<style>{_META_CSS % {"link": theme["link"]}}</style>')
+    ui.add_head_html(f'<style>{_META_CSS % theme}</style>')
     ui.colors(primary=theme['primary'], secondary=theme['secondary'], warning=theme['warning'])
     ui.dark_mode(theme['dark'])
 
@@ -95,7 +105,7 @@ def root():
                 if state.target != 'live':
                     ui.badge('PTS', color='warning').props('text-color=black')
                 ui.toggle({'live': 'Live', 'pts': 'PTS'}, value=state.target, on_change=on_target_change) \
-                    .props('dense no-caps toggle-color=primary text-color=white toggle-text-color=black')
+                    .props('dense no-caps toggle-color=primary toggle-text-color=black').classes('gru-header-toggle')
     drawer_toggle.style('color: white !important')
 
     nav_rows = {}
