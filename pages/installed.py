@@ -170,14 +170,15 @@ def installed_page():
                 refresh_list()
             return handler
 
-        toggle_props = 'no-caps dense toggle-color=primary toggle-text-color=black'
+        toggle_props = ('no-caps dense color=toggle-bg text-color=toggle-fg '
+                        'toggle-color=primary toggle-text-color=button-fg')
         with ui.row().classes('w-full items-center no-wrap'):
             ui.input('Filter', placeholder='Filter installed add-ons…', value=filter_state['term'],
                      on_change=set_filter('term')).classes('flex-grow')
             ui.toggle({'all': 'All', 'outdated': 'Updateable', 'unused': 'Unused'}, value=filter_state['kind'],
-                      on_change=set_filter('kind')).props(toggle_props).classes('gru-toggle')
+                      on_change=set_filter('kind')).props(toggle_props)
             ui.toggle({'all': 'Both', 'libs': 'Libraries', 'addons': 'Add-ons'}, value=filter_state['libs'],
-                      on_change=set_filter('libs')).props(toggle_props).classes('gru-toggle')
+                      on_change=set_filter('libs')).props(toggle_props)
         ui.separator()
 
         @ui.refreshable

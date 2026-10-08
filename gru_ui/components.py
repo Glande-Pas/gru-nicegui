@@ -13,10 +13,9 @@ from nicegui import run, ui
 from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
-from .state import (get_state, opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
+from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
                     ranked_candidates, set_match, save_addon_patch, search_for, dependency_search_term)
-from .themes import get_theme, DEFAULT_THEME
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -266,16 +265,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
         if status else ''
     )
     anchor = f' id="{anchor_id(addon.dir)}"' if is_installed and addon.parent is None else ''
-    theme = get_theme(get_state().config.get('app', 'theme', fallback=DEFAULT_THEME))
-    title_bg, title_fg, title_border = (
-        ('rgba(151,166,195,0.15)', 'inherit', 'rgba(151,166,195,0.25)') if theme['dark']
-        else (theme['secondary'], '#e8e8e8', 'rgba(255,255,255,0.12)')
-    )
     title_html = (
-        f'<div{anchor} style="background:{title_bg}; color:{title_fg};'
-        f'             padding:0.35rem 0.6rem; margin:-1rem -1rem 0.75rem;'
-        f'             border-radius:6px 6px 0 0;'
-        f'             border-bottom:1px solid {title_border};">'
+        f'<div{anchor} class="gru-card-title">'
         f'  <span style="display:inline-block; font-size:1.25em; font-weight:600">{title}</span>'
         f'  {status_span}'
         f'</div>'
@@ -305,9 +296,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         for c in candidates:
                             external_link(f'🔗 {eso_colored(c.title)}', c.metadata['link'])
                     else:
-                        ui.html('<span style="display:inline-block;font-size:0.85em;padding:0.1rem 0.45rem;'
-                                'background:rgba(255,171,0,0.15);border:1px solid rgba(255,171,0,0.4);'
-                                'border-radius:0.4rem" title="No ESOUI add-on uses this folder name, so it '
+                        ui.html('<span class="gru-badge-warn" title="No ESOUI add-on uses this folder name, so it '
                                 'can\'t be updated.">⚠️ Not found on ESOUI</span>')
 
         if is_installed and local is not None:

@@ -43,29 +43,33 @@ _META_CSS = """
     white-space: nowrap;
 }
 a {
-    color: %(link)s;
+    color: var(--q-link);
 }
-/* Unselected toggle options: distinct from both the page and the selected option */
-.gru-toggle .q-btn:not(.bg-primary) {
-    background: %(toggle_bg)s !important;
-    color: %(toggle_fg)s !important;
+.gru-card-title {
+    background: var(--q-title-bg);
+    color: var(--q-title-fg);
+    padding: 0.35rem 0.6rem;
+    margin: -1rem -1rem 0.75rem;
+    border-radius: 6px 6px 0 0;
+    border-bottom: 1px solid var(--q-title-border);
 }
-/* The header is always dark, whatever the theme */
-.gru-header-toggle .q-btn:not(.bg-primary) {
-    background: rgba(255, 255, 255, 0.14) !important;
-    color: white !important;
+.gru-badge-warn {
+    display: inline-block;
+    font-size: 0.85em;
+    padding: 0.1rem 0.45rem;
+    background: var(--q-badge-bg);
+    border: 1px solid var(--q-badge-border);
+    border-radius: 0.4rem;
 }
 /* QUploader hardcodes white header text in its own stylesheet -- no prop reaches it. */
 .q-uploader__header {
-    color: #1a1a1a !important;
+    color: var(--q-button-fg) !important;
 }
 """
 
-# Quasar's QBtn defaults to white text on any filled color, and dark mode has its own !important
-# overrides for it -- an !important inline style is the only thing that reliably beats both.
-# `dense` keeps the many-button addon-card toolbars compact.
-ui.button.default_props('text-color=#1a1a1a dense')
-ui.button.default_style('color: #1a1a1a !important')
+# `dense` keeps the many-button addon-card toolbars compact; button text color is the theme's custom
+# `button-fg` color, registered in root() along with the rest of the theme.
+ui.button.default_props('dense text-color=button-fg')
 
 
 _ROUTES: dict[str, Callable[[], None]] = {}
@@ -84,14 +88,15 @@ def root():
     theme_name = get_state().config.get('app', 'theme', fallback=DEFAULT_THEME)
     theme = get_theme(theme_name)
 
-    ui.add_head_html(f'<style>{_META_CSS % theme}</style>')
-    ui.colors(primary=theme['primary'], secondary=theme['secondary'], warning=theme['warning'])
+    ui.add_head_html(f'<style>{_META_CSS}</style>')
+    ui.colors(**{key: value for key, value in theme.items() if key != 'dark'})
     ui.dark_mode(theme['dark'])
 
     # The header stays denim regardless of theme, so its text must stay light regardless too.
-    with ui.header().classes('items-center justify-between bg-secondary text-white'):
+    with ui.header().classes('items-center justify-between bg-secondary text-header-fg'):
         with ui.row().classes('items-center gap-2'):
-            drawer_toggle = ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round')
+            drawer_toggle = ui.button(icon='menu', on_click=lambda: drawer.toggle()) \
+                .props('flat round text-color=header-fg')
             ui.image(str(_ICON)).classes('w-8 h-8')
             ui.label('Gru').classes('text-h5')
         state = get_state()
@@ -103,10 +108,10 @@ def root():
         if state.target_available('pts'):
             with ui.row().classes('items-center gap-2'):
                 if state.target != 'live':
-                    ui.badge('PTS', color='warning').props('text-color=black')
+                    ui.badge('PTS', color='warning').props('text-color=button-fg')
                 ui.toggle({'live': 'Live', 'pts': 'PTS'}, value=state.target, on_change=on_target_change) \
-                    .props('dense no-caps toggle-color=primary toggle-text-color=black').classes('gru-header-toggle')
-    drawer_toggle.style('color: white !important')
+                    .props('dense no-caps color=header-toggle-bg text-color=header-fg '
+                           'toggle-color=primary toggle-text-color=button-fg')
 
     nav_rows = {}
     with ui.left_drawer().classes('items-stretch') as drawer:
@@ -122,11 +127,9 @@ def root():
         active = path.split('?', 1)[0].split('#', 1)[0] or '/'
         for page_path, row in nav_rows.items():
             if page_path == active:
-                row.classes(add='bg-primary text-black font-medium', remove='hover:bg-gray-500/20')
-                row.style(replace='')
+                row.classes(add='bg-primary text-button-fg font-medium', remove='hover:bg-gray-500/20 text-link')
             else:
-                row.classes(add='hover:bg-gray-500/20', remove='bg-primary text-black font-medium')
-                row.style(replace=f'color: {theme["link"]}')
+                row.classes(add='hover:bg-gray-500/20 text-link', remove='bg-primary text-button-fg font-medium')
         ui.page_title(f'Gru — {dict((p, t) for p, _, t in _PAGES).get(active, "")}')
 
     router = ui.context.client.sub_pages_router
