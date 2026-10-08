@@ -5,9 +5,11 @@
 
 import concurrent.futures
 import contextlib
+import functools
 import io
 import locale
 import pathlib
+import time
 import warnings
 
 from nicegui import ui
@@ -20,6 +22,7 @@ from gru.install import Folder
 
 
 GAME = 'ESO'
+API_MAX_AGE = 3600  # seconds, matches gru's HTTP cache lifetime
 
 _RESOLVE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix='gru-resolve')
 _ambiguous_future = None
@@ -30,6 +33,7 @@ class AppState:
         locale.setlocale(locale.LC_ALL, '')
         self.config = load_config()
         self.api = API.live(self.config)
+        self.api_loaded = time.monotonic()
         self.local = None
         self.target = self.config.get('app', 'target', fallback='live')
         if not self.target_available(self.target):
@@ -79,12 +83,32 @@ def flash_warnings(caught):
     flash_summary('Warnings', list(dict.fromkeys(str(w.message) for w in caught)), flash_warning)
 
 
-def rescan():
-    """Re-scan the addons directory."""
+def _invalidate_api():
+    """Drop all cached ESOUI data (HTTP and in-memory) in place."""
     state = get_state()
+    api = state.api
+    api.session.cache.clear()
+    api.zip_session.cache.clear()
+    for name, attr in vars(type(api)).items():
+        if isinstance(attr, functools.cached_property):
+            api.__dict__.pop(name, None)
+    state.api_loaded = time.monotonic()
+
+
+def rescan():
+    """Re-scan the addons directory, against fresh ESOUI data if the loaded data is over an hour old."""
+    state = get_state()
+    if time.monotonic() - state.api_loaded > API_MAX_AGE:
+        _invalidate_api()
     if state.local is not None:
         state.local.scan(state.api)
         spawn_ambiguous_resolution()
+
+
+def refresh_api():
+    """Force-refresh the ESOUI data, then rescan against it."""
+    _invalidate_api()
+    rescan()
 
 
 def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
