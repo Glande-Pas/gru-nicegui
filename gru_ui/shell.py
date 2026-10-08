@@ -11,6 +11,8 @@ from nicegui import ui
 from .state import get_state, set_target
 from .themes import get_theme, DEFAULT_THEME
 
+BUILTIN_COLORS = {'primary', 'secondary', 'warning'}  # Quasar already has classes for these
+
 _PAGES = [
     ('/', '📦', 'Installed Add-Ons'),
     ('/search', '🔍', 'Search'),
@@ -89,7 +91,15 @@ def root():
     theme = get_theme(theme_name)
 
     ui.add_head_html(f'<style>{_META_CSS}</style>')
-    ui.colors(**{key: value for key, value in theme.items() if key != 'dark'})
+    colors = {key: value for key, value in theme.items() if key != 'dark'}
+    ui.colors(**colors)
+    # ui.colors only applies once the page mounts: emit the same variables and classes in the initial HTML
+    # so the first paint is already themed
+    names = {key: key.replace('_', '-') for key in colors}
+    ui.add_head_html('<style>body {' + ''.join(f'--q-{names[key]}: {value};' for key, value in colors.items()) + '}'
+                     + ''.join(f'.text-{name} {{ color: var(--q-{name}) !important; }}'
+                               f'.bg-{name} {{ background-color: var(--q-{name}) !important; }}'
+                               for name in names.values() if name not in BUILTIN_COLORS) + '</style>')
     ui.dark_mode(theme['dark'])
 
     # The header stays denim regardless of theme, so its text must stay light regardless too.
