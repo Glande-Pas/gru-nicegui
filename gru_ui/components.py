@@ -10,7 +10,7 @@ import webbrowser
 
 from nicegui import run, ui
 
-from gru.addon import InstalledAddon, AddonInfo
+from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
 from .state import (get_state, opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
@@ -172,9 +172,13 @@ def _render_meta_grid(addon, api, local):
     ).classes('w-full')
 
 
-def _dependency_link(dep, addon, local) -> None:
-    """One dependency: linked to its card on Installed Add-Ons if installed, else to a search for it."""
-    found = local.find_installed(dep)
+def _dependency_link(dep, addon, local, optional: bool) -> None:
+    """One dependency: linked to its card on Installed Add-Ons if installed, else to a search for it.
+    The game ignores versions of optional dependencies, so any installed copy counts for those. """
+    if optional:
+        found = next((a for a in local.dir(dep.dir) if not isinstance(a, AddonBundle)), None)
+    else:
+        found = local.find_installed(dep)
     if found is None:
         ui.html(f'<a style="cursor:pointer">❌ {dep.dir}</a>').on(
             'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip('Missing: search for it')
@@ -193,13 +197,14 @@ def _dependency_link(dep, addon, local) -> None:
 
 def _render_dependencies(addon, local, dimmed: bool) -> None:
     for label, deps in (('Dependencies', addon.deps), ('Optional', addon.optdeps)):
+        optional = label == 'Optional'
         if not deps:
             continue
         with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
                 .style('font-size:0.85em'):
             ui.html(f'<span class="gru-meta-lbl">{label}</span>')
             for dep in deps:
-                _dependency_link(dep, addon, local)
+                _dependency_link(dep, addon, local, optional)
 
 
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
