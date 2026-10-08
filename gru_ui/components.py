@@ -15,7 +15,7 @@ from gru.addon import InstalledAddon, AddonInfo
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
 from .state import (get_state, opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
-                    ranked_candidates, set_match, save_addon_patch)
+                    ranked_candidates, set_match, save_addon_patch, search_for, dependency_search_term)
 from .themes import get_theme, DEFAULT_THEME
 
 
@@ -172,8 +172,11 @@ def _render_meta_grid(addon, api, local):
     ).classes('w-full')
 
 
-def addon_card(addon, api, local, refresh, children: list | None = None):
-    """Render a single addon as a card with action buttons."""
+def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
+               dimmed: bool = False, expanded: bool = False):
+    """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
+    sub-addons with `children_label` as their dropdown text, `dimmed` greys out the card itself and `expanded`
+    opens the dropdown. """
     is_installed = isinstance(addon, InstalledAddon)
     has_id = getattr(addon, 'id', None) is not None
     can_update = update_pending(addon) if has_id and is_installed else False
@@ -244,9 +247,10 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
     )
 
     with ui.card().classes('w-full gap-2'):
-        ui.html(title_html)
+        dim = ' opacity-50' if dimmed else ''
+        ui.html(title_html).classes(dim)
 
-        with ui.row().classes('w-full items-start no-wrap gap-4'):
+        with ui.row().classes('w-full items-start no-wrap gap-4' + dim):
             if not is_embedded:
                 category = (addon.infos.metadata if is_installed and addon.infos else
                             addon.metadata if not is_installed else {}).get('category')
@@ -271,7 +275,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
                                 'border-radius:0.4rem" title="No ESOUI add-on uses this folder name, so it '
                                 'can\'t be updated.">⚠️ Not found on ESOUI</span>')
 
-        with ui.row().classes('w-full justify-end gap-1'):
+        with ui.row().classes('w-full justify-end gap-1' + dim):
             if not is_installed and has_id:
                 install_help = ('Unlock the installed version first' if locked_copy else
                                 'Replaces the installed ' + ', '.join(
@@ -311,7 +315,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None):
                                      if addon.infos else "Add-on isn't matched online")
 
         if children:
-            with ui.expansion(f'{len(children)} sub-addon(s)', icon='expand_more').classes('w-full'):
+            with ui.expansion(children_label or f'{len(children)} sub-addon(s)', icon='expand_more',
+                              value=expanded).classes('w-full'):
                 for child in sorted(children, key=lambda a: a.title.lower()):
                     addon_card(child, api, local, refresh)
 

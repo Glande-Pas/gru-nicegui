@@ -191,11 +191,29 @@ def installed_page():
             if kind != 'all':
                 matching = set(can_update if kind == 'outdated' else unused)
                 standalone = [a for a in standalone if a in matching]
-            if libs != 'all':
-                standalone = [a for a in standalone if (getattr(a, 'is_lib', False) is True) == (libs == 'libs')]
-            scores = {a: fuzzy_score(term, a.title or a.dir) for a in standalone} if term else {}
+            def is_lib(a):
+                return getattr(a, 'is_lib', False) is True
+
+            if libs == 'addons':
+                standalone = [a for a in standalone if not is_lib(a)]
+            # Active filters narrow bundles down to their matching members
+            narrowing = bool(term) or libs == 'libs'
+
+            def own_ok(a):
+                return (not term or fuzzy_score(term, a.title or a.dir) is not None) and (libs != 'libs' or is_lib(a))
+
+            def child_ok(c):
+                return (not term or fuzzy_score(term, c.title or c.dir) is not None) and (libs != 'libs' or is_lib(c))
+
+            matching_children = {a: [c for c in children_map[a] if child_ok(c)] for a in standalone} \
+                if narrowing else {}
+            if narrowing:
+                standalone = [a for a in standalone if own_ok(a) or matching_children[a]]
+            scores = {}
             if term:
-                standalone = [a for a in standalone if scores[a] is not None]
+                for a in standalone:
+                    candidates = [fuzzy_score(term, x.title or x.dir) for x in [a, *matching_children[a]]]
+                    scores[a] = min(c for c in candidates if c is not None)
 
             def _sort_key(a):
                 is_lib = getattr(a, 'is_lib', False) is True
@@ -222,8 +240,13 @@ def installed_page():
                 return
 
             for addon in sorted(standalone, key=_sort_key):
-                children = children_map.get(addon)
-                addon_card(addon, api, local, body.refresh, children=children or None)
+                children = children_map.get(addon, [])
+                children_label = None
+                if narrowing:
+                    children_label = f'{len(matching_children[addon])}/{len(children)} sub-addon(s) match'
+                    children = matching_children[addon]
+                addon_card(addon, api, local, body.refresh, children=children or None, children_label=children_label,
+                           dimmed=narrowing and not own_ok(addon), expanded=narrowing)
 
         addon_list(filter_state['term'], filter_state['kind'], filter_state['libs'])
 

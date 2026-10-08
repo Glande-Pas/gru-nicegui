@@ -37,12 +37,14 @@ def search_page():
         for addon in found:
             addon_card(addon, api, local, lambda: results.refresh(term))
 
-    search_state = {'term': ''}
+    search_state = {'term': state.pending_search}
+    state.pending_search = ''
 
     def on_search(e):
         search_state['term'] = e.value or ''
         results.refresh(search_state['term'])
 
-    ui.input('Search', placeholder='Search add-ons…', on_change=on_search).props('debounce=300').classes('w-full')
-    results('')
+    ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \
+      .props('debounce=300').classes('w-full')
+    results(search_state['term'])
     ui.timer(2.0, lambda: results.refresh(search_state['term']) if poll_ambiguous_resolution() else None)

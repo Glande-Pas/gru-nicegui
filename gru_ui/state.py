@@ -20,6 +20,8 @@ from gru.config import root_key, load_config, save_config, user_config
 from gru.api import API, AmbiguousDirectory
 from gru.install import Folder
 
+from .utils import strip_eso_colors
+
 
 GAME = 'ESO'
 API_MAX_AGE = 3600  # seconds, matches gru's HTTP cache lifetime
@@ -34,6 +36,7 @@ class AppState:
         self.config = load_config()
         self.api = API.live(self.config)
         self.api_loaded = time.monotonic()
+        self.pending_search = ''
         self.local = None
         self.target = self.config.get('app', 'target', fallback='live')
         if not self.target_available(self.target):
@@ -103,6 +106,20 @@ def rescan():
     if state.local is not None:
         state.local.scan(state.api)
         spawn_ambiguous_resolution()
+
+
+def search_for(term: str):
+    """Open the Search page with `term` already searched."""
+    get_state().pending_search = term
+    ui.navigate.to('/search')
+
+
+def dependency_search_term(dir_name: str) -> str:
+    """Search term finding the ESOUI add-on providing folder `dir_name`: its title if known, else the folder name."""
+    try:
+        return strip_eso_colors(get_state().api.dir(dir_name).title) or dir_name
+    except (FileNotFoundError, AmbiguousDirectory):
+        return dir_name
 
 
 async def rescan_async():
