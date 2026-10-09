@@ -5,6 +5,7 @@
 
 import contextlib
 import functools
+import html
 import warnings
 import webbrowser
 
@@ -12,7 +13,7 @@ from nicegui import run, ui
 
 from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
-from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
+from .utils import open_folder, si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
 from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
@@ -159,17 +160,24 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
 
 
 def _render_meta_grid(addon, api, local):
+    def value(lbl, val):
+        if lbl != 'Directory':
+            return f'<span>{val}</span>'
+        path = html.escape(val, quote=True)
+        return f'<span class="gru-meta-nowrap"><a data-path="{path}" style="cursor:pointer">{path}</a></span>'
+
     cells = ''.join(
         f'<div class="gru-meta-cell" style="grid-column:span {span}">'
-        f'<span class="gru-meta-lbl">{lbl}</span>'
-        f'<span class="{"gru-meta-nowrap" if lbl == "Directory" else ""}">{val}</span></div>'
+        f'<span class="gru-meta-lbl">{lbl}</span>{value(lbl, val)}</div>'
         for lbl, val, span in _metadata_rows(addon, api, local)
     )
     ui.html(
         f'<div style="display:grid; grid-template-columns:repeat(4,1fr); width:100%;'
         f' gap:0.3rem 0.75rem; font-size:0.85em;">'
         f'{cells}</div>'
-    ).classes('w-full')
+    ).classes('w-full').on(
+        'click', lambda e: open_folder(e.args), js_handler='(e) => {'
+        ' const a = e.target.closest("[data-path]"); if (a) emit(a.dataset.path); }')
 
 
 def _dependency_link(dep, addon, local, optional: bool) -> None:

@@ -11,6 +11,7 @@ from nicegui import app, ui
 from gru.config import root_key, save_config
 from gru_ui import shell
 from gru_ui.state import get_state, set_addons_root, GAME, flash_info
+from gru_ui.utils import open_folder
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
 
@@ -23,7 +24,12 @@ async def _browse_directory(start: str) -> str | None:
 def _addons_directory(target: str):
     state = get_state()
     current_root = state.config.get(f'{GAME}.addons', root_key(target)) or '(not set)'
-    ui.label(f'Current: {current_root}')
+    with ui.row().classes('items-center gap-1'):
+        ui.label('Current:')
+        current = ui.label(current_root)
+        if current_root != '(not set)':
+            current.classes('cursor-pointer underline').tooltip('Open in the file explorer')
+            current.on('click', lambda: open_folder(current_root))
 
     with ui.row().classes('items-center w-full'):
         path_input = ui.input('Path', value='' if current_root == '(not set)' else current_root).classes('flex-grow')

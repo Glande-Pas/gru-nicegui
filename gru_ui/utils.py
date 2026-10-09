@@ -5,8 +5,11 @@
 
 import locale
 import math
+import os
 import pathlib
 import re
+import subprocess
+import sys
 import warnings
 from urllib.parse import urlparse
 
@@ -88,3 +91,11 @@ def load_icon(icon_url: str) -> pathlib.Path | None:
     except Exception as err:
         warnings.warn(f'Error loading icon {icon_url!r}: {err}')
         return None
+
+
+def open_folder(path) -> None:
+    """Open a folder in the OS file explorer."""
+    if sys.platform == 'win32':
+        os.startfile(path)
+    else:
+        subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', str(path)])
