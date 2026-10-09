@@ -41,7 +41,7 @@ def _open_confirm_remove_unused(local, with_vars, refresh):
             _do_remove_unused(local, lambda addon: addon.folder in chosen)
             refresh()
 
-        ui.button('🧹 Remove unused', on_click=confirm)
+        ui.button('🧹 Remove unused', on_click=confirm).tooltip('Remove the unused libraries')
     dialog.open()
 
 
@@ -151,10 +151,16 @@ def installed_page():
             ui.label(f'{len(installed)} addon(s) installed, {len(can_update)} update(s) available.{locked_note}') \
               .classes('text-caption flex-grow min-w-0')
             with ui.row().classes('gap-2 shrink-0 no-wrap'):
-                ui.button('⬆️ Update all', on_click=update_all).set_enabled(bool(can_update))
-                ui.button('⬇️ Install missing', on_click=install_missing).set_enabled(bool(missing))
-                ui.button('🧹 Remove unused', on_click=remove_unused).set_enabled(bool(unused))
-                ui.button('🔄 Refresh', on_click=refresh_all)
+                ui.button('⬆️ Update all', on_click=update_all) \
+                  .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
+                           'and install their missing dependencies').set_enabled(bool(can_update))
+                ui.button('⬇️ Install missing', on_click=install_missing) \
+                  .tooltip('Install dependencies that installed add-ons require but are not present.') \
+                  .set_enabled(bool(missing))
+                ui.button('🧹 Remove unused', on_click=remove_unused) \
+                  .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused))
+                ui.button('🔄 Refresh', on_click=refresh_all) \
+                  .tooltip('Re-fetch the ESOUI add-on list and rescan the add-ons folder')
                 ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
 
         not_found = [a for a in unmatched if a not in ambiguous]
@@ -244,7 +250,7 @@ def installed_page():
                 children = children_map.get(addon, [])
                 children_label = None
                 if narrowing:
-                    children_label = f'{len(matching_children[addon])}/{len(children)} sub-addon(s) match'
+                    children_label = f'{len(matching_children[addon])}/{len(children)} bundled addon(s) match'
                     children = matching_children[addon]
                 addon_card(addon, api, local, body.refresh, children=children or None, children_label=children_label,
                            dimmed=narrowing and not own_ok(addon), expanded=narrowing)

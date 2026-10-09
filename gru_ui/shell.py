@@ -106,7 +106,7 @@ def root():
     with ui.header().classes('items-center justify-between bg-secondary text-header-fg'):
         with ui.row().classes('items-center gap-2'):
             drawer_toggle = ui.button(icon='menu', on_click=lambda: drawer.toggle()) \
-                .props('flat round text-color=header-fg')
+                .props('flat round text-color=header-fg').tooltip('Show or hide the navigation menu')
             ui.image(str(_ICON)).classes('w-8 h-8')
             ui.label('Gru').classes('text-h5')
         state = get_state()
@@ -121,7 +121,8 @@ def root():
                     ui.badge('PTS', color='warning').props('text-color=button-fg')
                 ui.toggle({'live': 'Live', 'pts': 'PTS'}, value=state.target, on_change=on_target_change) \
                     .props('dense no-caps color=header-toggle-bg text-color=header-fg '
-                           'toggle-color=primary toggle-text-color=button-fg')
+                           'toggle-color=primary toggle-text-color=button-fg') \
+                    .tooltip('Switch between the live and PTS add-ons folders')
 
     nav_rows = {}
     with ui.left_drawer().classes('items-stretch') as drawer:

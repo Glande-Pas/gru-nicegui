@@ -179,29 +179,36 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
     else:
         found = local.find_installed(dep)
     if found is None:
-        ui.html(f'<a style="cursor:pointer">❌ {dep.dir}</a>').on(
-            'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip('Missing: search for it')
+        ui.html(f'<a style="cursor:pointer">{"➕" if optional else "❌"} {dep.dir}</a>').on(
+            'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip(
+                'Not installed, but optional: search ESOUI for it' if optional else
+                'Missing, and needed: search ESOUI for it')
         return
     top, own_top = found, addon
     while top.parent is not None:
         top = top.parent
     while own_top.parent is not None:
         own_top = own_top.parent
-    mark = '🔄' if update_pending(found) else '✅'
+    updatable = update_pending(found)
+    mark = '🔄' if updatable else '✅'
     if top is own_top:
-        ui.html(f'<span>{mark} {dep.dir}</span>')
+        ui.html(f'<span>{mark} {dep.dir}</span>').tooltip(
+            'Bundled with this add-on' + (', update available' if updatable else ''))
     else:
-        ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>')
+        ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>').tooltip(
+            'Installed' + (', update available' if updatable else '') + ': go to its card')
 
 
 def _render_dependencies(addon, local, dimmed: bool) -> None:
-    for label, deps in (('Dependencies', addon.deps), ('Optional', addon.optdeps)):
-        optional = label == 'Optional'
+    for label, deps in (('Requires', addon.deps), ('Works with', addon.optdeps)):
+        optional = label == 'Works with'
         if not deps:
             continue
         with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
                 .style('font-size:0.85em'):
-            ui.html(f'<span class="gru-meta-lbl">{label}</span>')
+            ui.html(f'<span class="gru-meta-lbl">{label}</span>').tooltip(
+                'Needed by this add-on: it will not load if any of them is missing' if not optional else
+                'Optional extras: this add-on uses them when installed, but works fine without them')
             for dep in deps:
                 _dependency_link(dep, addon, local, optional)
 
@@ -209,7 +216,7 @@ def _render_dependencies(addon, local, dimmed: bool) -> None:
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
                dimmed: bool = False, expanded: bool = False):
     """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
-    sub-addons with `children_label` as their dropdown text, `dimmed` greys out the card itself and `expanded`
+    bundled addons with `children_label` as their dropdown text, `dimmed` greys out the card itself and `expanded`
     opens the dropdown. """
     is_installed = isinstance(addon, InstalledAddon)
     has_id = getattr(addon, 'id', None) is not None
@@ -310,18 +317,17 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                 + ' folder and records it as this add-on' if ambiguous_copies else None)
                 btn = ui.button('⬇️ Install', on_click=lambda: _run_install(addon, api, local, refresh))
                 btn.set_enabled(not locked_copy)
-                if install_help:
-                    btn.tooltip(install_help)
+                btn.tooltip(install_help or 'Download this add-on from ESOUI into your add-ons folder')
 
             if is_installed:
-                ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh))
+                ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh)) \
+                  .tooltip("Delete this add-on's folder, including any add-ons bundled inside it")
 
                 if can_update:
                     label = '⬆️ Install standalone' if is_embedded else '⬆️ Update'
                     up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
-                    if is_embedded:
-                        up_btn.tooltip('Install the update as a top-level library, which ESO loads '
-                                       'instead of this bundled copy')
+                    up_btn.tooltip('Install the update as a standalone library add-on' if is_embedded else
+                                   'Update to the latest ESOUI version')
 
                 # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
                 # permanent -- remove the add-on and install the right one instead of changing it.
@@ -332,8 +338,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                 if not is_embedded:
                     lock_label = '🔓 Unlock version' if is_locked else '🔒 Lock version'
                     lock_btn = ui.button(lock_label, on_click=lambda: _handle_lock(addon, is_locked, refresh))
-                    if not is_locked:
-                        lock_btn.tooltip('Pin to the installed version: skip it on updates')
+                    lock_btn.tooltip('Allow updates for this add-on again' if is_locked else
+                                     'Pin to the installed version: skip updates')
 
                 if not is_embedded:
                     save_btn = ui.button('💾 Save changes', on_click=lambda: _handle_save(addon, api, local, refresh))
@@ -342,7 +348,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                      if addon.infos else "Add-on isn't matched online")
 
         if children:
-            with ui.expansion(children_label or f'{len(children)} sub-addon(s)', icon='expand_more',
+            with ui.expansion(children_label or f'{len(children)} bundled addon(s)', icon='expand_more',
                               value=expanded).classes('w-full'):
                 for child in sorted(children, key=lambda a: a.title.lower()):
                     addon_card(child, api, local, refresh)
@@ -399,8 +405,10 @@ def _open_confirm_remove(addon: InstalledAddon, local, refresh):
             refresh()
 
         with ui.row().classes('w-full'):
-            ui.button('🗑️ Delete them too', on_click=lambda: choose(True)).classes('flex-grow')
-            ui.button('💾 Keep them', on_click=lambda: choose(False)).classes('flex-grow')
+            ui.button('🗑️ Delete them too', on_click=lambda: choose(True)).classes('flex-grow') \
+              .tooltip('Remove the add-on and its saved variables')
+            ui.button('💾 Keep them', on_click=lambda: choose(False)).classes('flex-grow') \
+              .tooltip('Remove the add-on but keep its saved variables')
     dialog.open()
 
 
@@ -503,7 +511,8 @@ def _open_choose_match(addon: InstalledAddon, refresh):
                 dialog.close()
                 refresh()
 
-            confirm_btn = ui.button('✅ Confirm', on_click=confirm)
+            confirm_btn = ui.button('✅ Confirm', on_click=confirm) \
+                .tooltip('Use the selected ESOUI listing for this folder')
             confirm_btn.set_enabled(picked_box['value'] is not addon.infos)
 
     ui.timer(0.01, load, once=True)

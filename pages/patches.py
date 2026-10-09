@@ -157,8 +157,9 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
             dialog.close()
 
         with ui.row().classes('w-full'):
-            ui.button('🔧 Apply what can be applied', on_click=apply_partial).classes('flex-grow')
-            ui.button('Cancel', on_click=cancel).classes('flex-grow')
+            ui.button('🔧 Apply what can be applied', on_click=apply_partial).classes('flex-grow') \
+              .tooltip('Apply the parts that still match; the rest is saved as .rej files')
+            ui.button('Cancel', on_click=cancel).classes('flex-grow').tooltip('Close without changing anything')
     dialog.open()
 
 
@@ -211,8 +212,12 @@ def patches_page():
                 ui.html(f'The saved patch for <b>{eso_colored(addon.title)}</b> differs from what '
                         'scanning just found.')
                 with ui.row().classes('w-full'):
-                    ui.button(f'✅ {action}', on_click=lambda: confirm.submit(True)).classes('flex-grow')
-                    ui.button('⏭️ Skip', on_click=lambda: confirm.submit(False)).classes('flex-grow')
+                    ui.button(f'✅ {action}', on_click=lambda: confirm.submit(True)).classes('flex-grow') \
+                      .tooltip({'Remove': 'Delete the saved patch: the add-on no longer differs from ESOUI',
+                                'Update': 'Save the newly found changes over the existing patch',
+                                'Replace': 'Replace the saved patch with the newly found changes'}[action])
+                    ui.button('⏭️ Skip', on_click=lambda: confirm.submit(False)).classes('flex-grow') \
+                      .tooltip('Keep the existing saved patch')
             return bool(await confirm)
 
         async def scan_and_save():
@@ -271,7 +276,8 @@ def patches_page():
             body.refresh()
 
         with ui.row().classes('w-full items-center gap-2'):
-            ui.button('💾 Scan and Save', on_click=scan_and_save)
+            ui.button('💾 Scan and Save', on_click=scan_and_save) \
+              .tooltip('Compare every installed add-on with its ESOUI original and save local changes as patches')
             if patches:
                 ui.label(f'{len(patches)} patch(es) in {patch_dir}').classes('text-caption')
 
@@ -332,8 +338,8 @@ def patches_page():
                         '▶️ Apply',
                         on_click=lambda a=addon, pf=patch_file: _try_apply_patch(a, pf, body.refresh))
                     apply_btn.disable()
-                    if addon is None:
-                        apply_btn.tooltip("Add-on isn't installed")
+                    apply_btn.tooltip("Add-on isn't installed" if addon is None else
+                                      'Re-apply this patch to the installed add-on')
 
                     revert_btn = ui.button(
                         '↩️ Revert',
@@ -346,13 +352,15 @@ def patches_page():
                         pending_checks.append((addon, patch_file, summary, label, apply_btn, revert_btn))
 
                     ui.button('⬇️ Download',
-                              on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n))
+                              on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n)) \
+                      .tooltip('Export this patch file')
 
                     def delete(pf=patch_file):
                         pf.unlink()
                         body.refresh()
 
-                    ui.button('🗑️ Delete', on_click=delete)
+                    ui.button('🗑️ Delete', on_click=delete) \
+                      .tooltip("Delete the saved patch. The add-on's files are not touched")
 
                 # Highlighting every diff up front makes the page slow to load: render on first open
                 def show_diff(e, diff=diff_body):

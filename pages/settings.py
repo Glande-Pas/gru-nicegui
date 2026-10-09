@@ -33,7 +33,7 @@ def _addons_directory(target: str):
             if selected:
                 path_input.set_value(selected)
 
-        ui.button('📂 Browse…', on_click=browse)
+        ui.button('📂 Browse…', on_click=browse).tooltip('Pick the add-ons folder in a file dialog')
 
     def apply_directory():
         path = pathlib.Path(path_input.value or '')
@@ -56,9 +56,9 @@ def _addons_directory(target: str):
         _addons_directory.refresh()
 
     with ui.row():
-        ui.button('✅ Apply directory', on_click=apply_directory)
+        ui.button('✅ Apply directory', on_click=apply_directory).tooltip('Use this folder and rescan')
         if target != 'live':
-            ui.button('🗑️ Clear', on_click=clear_directory)
+            ui.button('🗑️ Clear', on_click=clear_directory).tooltip('Forget this folder')
 
 
 @shell.page('/settings')
