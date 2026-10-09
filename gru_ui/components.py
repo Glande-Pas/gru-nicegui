@@ -14,8 +14,9 @@ from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
 from .utils import si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
 from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
-                    remove_vars_setting, logged_changes, update_pending, update_moot, set_locked, ambiguous_candidates,
-                    ranked_candidates, set_match, save_addon_patch, search_for, dependency_search_term)
+                    remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
+                    ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
+                    dependency_search_term)
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -341,7 +342,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     lock_btn.tooltip('Allow updates for this add-on again' if is_locked else
                                      'Pin to the installed version: skip updates')
 
-                if not is_embedded:
+                if not is_embedded and patches_enabled():
                     save_btn = ui.button('💾 Save changes', on_click=lambda: _handle_save(addon, api, local, refresh))
                     save_btn.set_enabled(addon.infos is not None)
                     save_btn.tooltip('Save local changes as a patch, to re-apply after updates'

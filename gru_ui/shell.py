@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from nicegui import ui
 
-from .state import get_state, set_target
+from .state import get_state, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME
 
 BUILTIN_COLORS = {'primary', 'secondary', 'warning'}  # Quasar already has classes for these
@@ -127,6 +127,8 @@ def root():
     nav_rows = {}
     with ui.left_drawer().classes('items-stretch') as drawer:
         for path, icon, title in _PAGES:
+            if path == '/patches' and not patches_enabled():
+                continue
             with ui.link(target=path).classes('no-underline'):
                 with ui.row().classes('items-center gap-2 w-full p-2 rounded') as nav_rows[path]:
                     ui.label(icon)

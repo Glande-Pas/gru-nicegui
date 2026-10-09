@@ -199,6 +199,11 @@ def opt_deps() -> bool:
     return get_state().config.getboolean(f'{GAME}.addons', 'optional')
 
 
+def patches_enabled() -> bool:
+    """Whether the advanced patches feature (Patches page, Save changes buttons) is shown."""
+    return get_state().config.getboolean('app', 'patches', fallback=False)
+
+
 def patch_updates() -> bool:
     """Whether a bulk update should re-apply each addon's saved patch afterwards."""
     return get_state().config.getboolean(f'{GAME}.addons', 'patch_updates')

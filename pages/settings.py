@@ -111,14 +111,24 @@ def settings_page():
 
     ui.separator()
     ui.label('Patches').classes('text-h6')
+    patches = config.getboolean('app', 'patches', fallback=False)
     patch = config.getboolean(f'{GAME}.addons', 'patch_updates')
+
+    def on_patches_change(e):
+        config.set('app', 'patches', 'on' if e.value else 'off')
+        save_config(config)
+        ui.navigate.reload()
+
+    ui.switch('Advanced: keep local edits to add-ons as patches', value=patches, on_change=on_patches_change) \
+      .tooltip('Shows the Patches page and a Save changes button on each add-on')
 
     def on_patch_change(e):
         config.set(f'{GAME}.addons', 'patch_updates', 'on' if e.value else 'off')
         save_config(config)
         ui.notify('Saved.', type='positive')
 
-    ui.switch('Re-apply patches automatically on update', value=patch, on_change=on_patch_change)
+    ui.switch('Re-apply patches automatically on update', value=patch, on_change=on_patch_change) \
+      .set_visibility(patches)
 
     ui.separator()
     ui.label('Saved variables').classes('text-h6')
