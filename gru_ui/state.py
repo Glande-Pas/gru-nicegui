@@ -18,6 +18,7 @@ from gru import patch as gru_patch
 from gru.app import log_changes, rank_candidates, find_ambiguous, resolve_exact_matches
 from gru.config import root_key, load_config, save_config, user_config
 from gru.api import API, AmbiguousDirectory
+from gru.cache import prune_downloads
 from gru.install import Folder
 
 from .utils import strip_eso_colors
@@ -52,6 +53,9 @@ class AppState:
         if self.target_available(self.target):
             self.local = Folder(GAME, self.config, self.target)
             self.local.scan(self.api)
+            with contextlib.suppress(OSError):
+                prune_downloads(self.local.installed)
+            self.api.prune_cache()
 
 
 _state = None
