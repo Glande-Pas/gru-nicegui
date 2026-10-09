@@ -333,7 +333,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                 # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
                 # permanent -- remove the add-on and install the right one instead of changing it.
                 if not is_embedded and candidates:
-                    ui.button('🔗 Match ESOUI listing', on_click=lambda: _open_choose_match(addon, refresh)) \
+                    ui.button('🔗 Match ESOUI listing', on_click=lambda: open_choose_match(addon, refresh)) \
                       .tooltip('Select which ESOUI add-on this folder is, which several share')
 
                 if not is_embedded:
@@ -470,8 +470,10 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
     refresh()
 
 
-def _open_choose_match(addon: InstalledAddon, refresh):
+def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None):
     with ui.dialog() as dialog, ui.card().classes('w-full max-w-2xl'):
+        if context:
+            ui.label(context).classes('text-caption')
         ui.html(f'Several ESOUI add-ons install a <code>{addon.dir}</code> folder. Which one is '
                 f'<b>{eso_colored(addon.title)}</b> {addon.version} by {eso_colored(addon.author or "?")}?')
         spinner = ui.spinner('dots', size='lg')
@@ -509,7 +511,7 @@ def _open_choose_match(addon: InstalledAddon, refresh):
 
             def confirm():
                 set_match(addon, picked_box['value'])
-                dialog.close()
+                dialog.submit(True)
                 refresh()
 
             confirm_btn = ui.button('✅ Confirm', on_click=confirm) \
@@ -517,3 +519,4 @@ def _open_choose_match(addon: InstalledAddon, refresh):
             confirm_btn.set_enabled(picked_box['value'] is not addon.infos)
 
     ui.timer(0.01, load, once=True)
+    return dialog

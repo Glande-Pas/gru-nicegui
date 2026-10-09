@@ -13,7 +13,7 @@ from gru_ui import shell
 from gru_ui.state import (get_state, rescan, rescan_async, refresh_api, opt_deps, patch_updates, flash_summary,
                           flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
-from gru_ui.components import addon_card, progress_factory, global_progress
+from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
 from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_score
 
 
@@ -85,7 +85,16 @@ def installed_page():
         unused = local.unused_deps(installed, opt=opt_deps())
         missing = local.missing_deps(installed, opt=opt_deps())
 
+        async def offer_matching():
+            for i, addon in enumerate(ambiguous, 1):
+                if addon.infos is None:
+                    context = (f'Update all: add-on {i}/{len(ambiguous)} can\'t be updated until matched. '
+                               'Close this dialog to skip it.')
+                    await open_choose_match(addon, lambda: None, context)
+
         async def update_all():
+            if ambiguous:
+                await offer_matching()
             before = {a.folder: (a.title, a.version) for a in local.installed}
             async with global_progress('Updating add-ons...') as pstate:
                 progress = progress_factory(pstate)
@@ -153,7 +162,7 @@ def installed_page():
             with ui.row().classes('gap-2 shrink-0 no-wrap'):
                 ui.button('⬆️ Update all', on_click=update_all) \
                   .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
-                           'and install their missing dependencies').set_enabled(bool(can_update))
+                           'and install their missing dependencies').set_enabled(bool(can_update or ambiguous))
                 ui.button('⬇️ Install missing', on_click=install_missing) \
                   .tooltip('Install dependencies that installed add-ons require but are not present.') \
                   .set_enabled(bool(missing))
