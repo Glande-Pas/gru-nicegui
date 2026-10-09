@@ -12,7 +12,7 @@ build_versions = pathlib.Path(SPECPATH) / 'gru_ui' / '_build_version.py'  # noqa
 if not build_versions.exists():
     versions = {
         'gru-nicegui': importlib.metadata.version('gru-nicegui'),
-        'gru': importlib.metadata.version('gru-eso'),
+        'gru-eso': importlib.metadata.version('gru-eso'),
     }
     with build_versions.open('w') as f:  # noqa: F821
         f.write(f'VERSIONS = {versions!r}\n')

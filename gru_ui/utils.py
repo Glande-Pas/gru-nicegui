@@ -3,6 +3,7 @@
 
 """Formatting helpers, ported from gru-toga."""
 
+import importlib.metadata
 import locale
 import math
 import os
@@ -99,3 +100,19 @@ def open_folder(path) -> None:
         os.startfile(path)
     else:
         subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', str(path)])
+
+
+try:
+    # Written by gru.spec: a frozen build has no package metadata to read
+    from gru_ui._build_version import VERSIONS
+except ImportError:
+    VERSIONS = {}
+
+
+def package_version(package: str) -> str:
+    if package in VERSIONS:
+        return VERSIONS[package]
+    try:
+        return importlib.metadata.version(package)
+    except importlib.metadata.PackageNotFoundError:
+        return 'unknown'

@@ -82,7 +82,7 @@ jobs:
         run: |
           gru=$(git -C "$RUNNER_TEMP/gru" describe --tags --long --always --dirty)
           ui=$(git describe --tags --long --always --dirty)
-          printf 'VERSIONS = {"gru-nicegui": "%s", "gru": "%s"}\n' "$ui" "$gru" > gru_ui/_build_version.py
+          printf 'VERSIONS = {"gru-nicegui": "%s", "gru-eso": "%s"}\n' "$ui" "$gru" > gru_ui/_build_version.py
 
       - name: Build with PyInstaller
         env:

@@ -4,12 +4,15 @@
 """Shared page chrome: header with logo and the left nav drawer, built once around the app's pages."""
 
 import importlib.resources
+import webbrowser
 from collections.abc import Callable
 
-from nicegui import ui
+from nicegui import run, ui
 
 from .state import get_state, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME
+from .updates import latest_release, update_url
+from .utils import package_version
 
 BUILTIN_COLORS = {'primary', 'secondary', 'warning'}  # Quasar already has classes for these
 
@@ -150,3 +153,26 @@ def root():
     show_active(router.current_path)
 
     ui.sub_pages(_ROUTES).classes('w-full')
+
+    ui.timer(1.0, _check_for_update, once=True)
+
+
+_update_checked = False
+
+
+async def _check_for_update():
+    """Once per launch, offer a newer release in a small dismissable card."""
+    global _update_checked
+    if _update_checked:
+        return
+    _update_checked = True
+    latest = await run.io_bound(latest_release)
+    if latest is None or latest[0] == package_version('gru-nicegui'):
+        return
+    version, release_page = latest
+    with ui.card().classes('fixed bottom-4 right-4 z-50 gap-1') as card:
+        with ui.row().classes('items-center justify-between w-full no-wrap'):
+            ui.label(f'Gru {version} is available').classes('font-medium')
+            ui.icon('close').classes('cursor-pointer').on('click', card.delete)
+        ui.label(f'You have {package_version("gru-nicegui")}.').classes('text-caption')
+        ui.button('Get it', on_click=lambda: webbrowser.open(update_url(release_page)))
