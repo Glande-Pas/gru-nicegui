@@ -18,15 +18,19 @@ Gru's code is licensed under [EUPL-1.2](LICENSE.md).
 ## Getting started
 
 1. Install Gru:
-   - **Windows**: from the [Microsoft Store](https://apps.microsoft.com/detail/9P1251PBNJMM).
+   - **Windows**: from the [Microsoft Store](https://apps.microsoft.com/detail/9P1251PBNJMM) or download the `.Msixbundle`
+     from [latest release](https://github.com/Glande-Pas/gru-nicegui/releases/latest) and install it.
+     [![Microsoft Store logo](https://get.microsoft.com/images/en-us%20light.svg)](https://apps.microsoft.com/detail/9P1251PBNJMM)
    - **Linux**: download `gru-x86_64.flatpak` (or `gru-aarch64.flatpak` on ARM) from the
      [latest release](https://github.com/Glande-Pas/gru-nicegui/releases/latest), then
      `flatpak install --user gru-x86_64.flatpak`.
    - **Python**: `pip install gru-nicegui`, then run `gru-app`. On Linux this also needs WebKitGTK, see [Linux](#linux).
 2. Start it. On first start, you may need to open **Settings** and point it at your ESO `AddOns` folder, typically
    `Documents\Elder Scrolls Online\live\AddOns` on Windows.
-3. **Installed Add-Ons** lists what you have and what can be updated; **Search** finds add-ons on ESOUI;
-   **Patches** saves your own edits to add-ons so they can be re-applied after updates.
+3. - **Installed Add-Ons** lists what you have and what can be updated
+   - **Search** finds add-ons on ESOUI
+   - **Recent Changes** lists the latest get/remove/update operations done with Gru
+   - **Patches** (if enabled in Settings) saves your own edits to add-ons so they can be re-applied after updates
 
 Settings, saved patches and the change log are kept in Gru's config folder, shared with the `gru` command line
 tool: `%APPDATA%\gru` on Windows, `~/.config/gru` on Linux, `~/Library/Preferences/gru` on macOS.
