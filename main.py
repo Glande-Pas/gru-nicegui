@@ -36,7 +36,7 @@ def run():
     # Window background shown until the page loads: Quasar's dark/light page colors
     app.native.window_args['background_color'] = '#121212' if dark else '#FFFFFF'
     ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=dark, reload=False,
-           native=True, window_size=(1400, 900))
+           native=True, window_size=(1400, 900), reconnect_timeout=10)
 
 
 if __name__ in {'__main__', '__mp_main__'}:
