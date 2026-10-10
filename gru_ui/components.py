@@ -15,7 +15,7 @@ from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
 from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anchor_id, bold, code, \
     installed_item, updated_item
-from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
+from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
                     dependency_search_term)
@@ -38,9 +38,11 @@ class _ProgressState:
 async def global_progress(label: str):
     """A floating progress card pinned to a corner of the page."""
     state = _ProgressState(label)
-    with ui.card().classes('fixed bottom-4 right-4 z-[9999] w-96 shadow-lg gap-1') as card:
+    with ui.context.client.content, \
+            ui.card().classes('fixed bottom-4 right-4 z-[9999] w-96 shadow-lg gap-1') as card:
         label_el = ui.label(label)
         bar = ui.linear_progress(value=0, show_value=False)
+        timer = ui.timer(0.15, lambda: tick())
 
     def tick():
         label_el.set_text('{message} {fraction:.0%}'.format(message=state.message, fraction=state.frac)
@@ -48,7 +50,6 @@ async def global_progress(label: str):
         bar.set_value(state.frac or 0)
         bar.props(f'indeterminate={"true" if state.frac is None else "false"}')
 
-    timer = ui.timer(0.15, tick)
     try:
         yield state
     finally:
@@ -363,14 +364,15 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     addon_card(child, api, local, refresh)
 
 
-def _handle_lock(addon, is_locked: bool, refresh):
-    set_locked(addon, not is_locked)
+async def _handle_lock(addon, is_locked: bool, refresh):
+    await set_locked(addon, not is_locked)
     refresh()
 
 
-def _handle_save(addon, api, local, refresh):
+async def _handle_save(addon, api, local, refresh):
     try:
-        n, messages = save_addon_patch(addon, api, local)
+        async with global_progress('Checking {title}...'.format(title=addon.title)):
+            n, messages = await run.io_bound(save_addon_patch, addon, api, local)
     except Exception as exc:
         flash_warning('Failed to check {title}: {error}'.format(title=bold(addon.title), error=exc))
         return
@@ -383,21 +385,27 @@ def _handle_save(addon, api, local, refresh):
     refresh()
 
 
-def _handle_remove(addon: InstalledAddon, local, refresh):
+async def _handle_remove(addon: InstalledAddon, local, refresh):
     setting = remove_vars_setting()
     if setting == 'ask' and local.saved_variable_files(addon):
         _open_confirm_remove(addon, local, refresh)
     else:
-        _do_remove(addon, local, remove_vars=setting == 'yes')
+        await _do_remove(addon, local, remove_vars=setting == 'yes')
         refresh()
 
 
-def _do_remove(addon: InstalledAddon, local, remove_vars: bool = False):
+async def _do_remove(addon: InstalledAddon, local, remove_vars: bool = False):
     title = addon.title or addon.dir
-    with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
-        local.remove(addon, remove_vars=remove_vars)
+
+    def work():
+        with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
+            local.remove(addon, remove_vars=remove_vars)
+        return caught
+
+    async with global_progress('Removing {title}...'.format(title=title)):
+        caught = await run.io_bound(work)
+        await rescan_async()
     flash_warnings(caught)
-    rescan()
     flash_info('Removed: {title}'.format(title=bold(title)))
 
 
@@ -408,9 +416,9 @@ def _open_confirm_remove(addon: InstalledAddon, local, refresh):
         ui.code('\n'.join(str(path) for path in files))
         ui.label("Deleting them discards this add-on's settings and data for all characters.").classes('text-caption')
 
-        def choose(delete: bool):
+        async def choose(delete: bool):
             dialog.close()
-            _do_remove(addon, local, remove_vars=delete)
+            await _do_remove(addon, local, remove_vars=delete)
             refresh()
 
         with ui.row().classes('w-full'):
@@ -522,8 +530,8 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
             ui.radio(radio_options, value=current_index, on_change=on_pick)
             show_link()
 
-            def confirm():
-                set_match(addon, picked_box['value'])
+            async def confirm():
+                await set_match(addon, picked_box['value'])
                 dialog.submit(True)
                 refresh()
 

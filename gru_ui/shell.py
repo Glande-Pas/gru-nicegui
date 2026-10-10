@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from nicegui import run, ui
 
-from .state import get_state, set_target, patches_enabled
+from .state import get_state, ensure_loaded, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME
 from .updates import latest_release, update_url
 from .utils import package_version
@@ -80,10 +80,24 @@ ui.button.default_props('dense text-color=button-fg')
 _ROUTES: dict[str, Callable[[], None]] = {}
 
 
-def page(path: str):
-    """Register a page's content builder. Pages are shown inside the shared frame built once by root()."""
+def page(path: str, needs_addons: bool = True):
+    """Register a page's content builder. Pages are shown inside the shared frame built once by root().
+    Pages using the scanned addons wait for the first scan, which runs off the event loop."""
     def decorator(builder: Callable[[], None]) -> Callable[[], None]:
-        _ROUTES[path] = builder
+        if not needs_addons:
+            _ROUTES[path] = builder
+            return builder
+
+        async def loading_builder():
+            if not get_state().local_loaded:
+                with ui.column().classes('absolute-center items-center gap-2') as loading:
+                    ui.spinner(size='xl')
+                    ui.label('Loading Add-Ons…').classes('text-h6')
+                await ensure_loaded()
+                loading.delete()
+            builder()
+
+        _ROUTES[path] = loading_builder
         return builder
     return decorator
 
@@ -114,8 +128,8 @@ def root():
             ui.label('Gru').classes('text-h5')
         state = get_state()
 
-        def on_target_change(e):
-            set_target(e.value)
+        async def on_target_change(e):
+            await set_target(e.value)
             ui.navigate.reload()
 
         if state.target_available('pts'):

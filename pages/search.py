@@ -47,4 +47,8 @@ def search_page():
     ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \
       .props('debounce=300').classes('w-full')
     results(search_state['term'])
-    ui.timer(2.0, lambda: results.refresh(search_state['term']) if poll_ambiguous_resolution() else None)
+    async def poll():
+        if await poll_ambiguous_resolution():
+            results.refresh(search_state['term'])
+
+    ui.timer(2.0, poll)

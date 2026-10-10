@@ -10,19 +10,25 @@ from collections import defaultdict
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, rescan, rescan_async, refresh_api, opt_deps, patch_updates, flash_summary,
+from gru_ui.state import (get_state, rescan_async, refresh_api, opt_deps, patch_updates, flash_summary,
                           flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
 
-def _do_remove_unused(local, remove_vars):
+async def _do_remove_unused(local, remove_vars):
     before = {a.dir: a.title for a in local.installed}
-    with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
-        local.remove_unused_deps(opt=opt_deps(), remove_vars=remove_vars)
+
+    def work():
+        with logged_changes(), warnings.catch_warnings(record=True, category=UserWarning) as caught:
+            local.remove_unused_deps(opt=opt_deps(), remove_vars=remove_vars)
+        return caught
+
+    async with global_progress('Removing unused add-ons...'):
+        caught = await run.io_bound(work)
+        await rescan_async()
     flash_warnings(caught)
-    rescan()
     after = {a.dir for a in local.installed}
     flash_summary('Removed', [bold(before[dir_] or dir_)
                               for dir_ in sorted(before.keys() - after, key=lambda d: (before[d] or d).lower())])
@@ -35,10 +41,10 @@ def _open_confirm_remove_unused(local, with_vars, refresh):
         ui.label('Libraries that become unused as a result of this removal keep their saved variables.') \
           .classes('text-caption')
 
-        def confirm():
+        async def confirm():
             chosen = {folder for folder, box in checks.items() if box.value}
             dialog.close()
-            _do_remove_unused(local, lambda addon: addon.folder in chosen)
+            await _do_remove_unused(local, lambda addon: addon.folder in chosen)
             refresh()
 
         ui.button('🧹 Remove unused', on_click=confirm).tooltip('Remove the unused libraries')
@@ -136,13 +142,13 @@ def installed_page():
                                         if a.dir not in before])
             body.refresh()
 
-        def remove_unused():
+        async def remove_unused():
             setting = remove_vars_setting()
             with_vars = [a for a in local.unused_deps(installed, opt=opt_deps()) if local.saved_variable_files(a)]
             if setting == 'ask' and with_vars:
                 _open_confirm_remove_unused(local, with_vars, body.refresh)
             else:
-                _do_remove_unused(local, lambda addon: setting == 'yes')
+                await _do_remove_unused(local, lambda addon: setting == 'yes')
                 body.refresh()
 
         def export_list():
@@ -278,4 +284,8 @@ def installed_page():
         addon_list(filter_state['term'], filter_state['kind'], filter_state['libs'])
 
     body()
-    ui.timer(2.0, lambda: body.refresh() if poll_ambiguous_resolution() else None)
+    async def poll():
+        if await poll_ambiguous_resolution():
+            body.refresh()
+
+    ui.timer(2.0, poll)

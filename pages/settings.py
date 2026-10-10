@@ -41,22 +41,22 @@ def _addons_directory(target: str):
 
         ui.button('📂 Browse…', on_click=browse).tooltip('Pick the add-ons folder in a file dialog')
 
-    def apply_directory():
+    async def apply_directory():
         path = pathlib.Path(path_input.value or '')
         if not path.exists() or not path.is_dir():
             ui.notify('Directory not found: {path}'.format(path=path), type='negative')
             return
         had_target = state.target_available(target)
-        set_addons_root(path, target)
+        await set_addons_root(path, target)
         if not had_target or target == state.target:
             ui.navigate.reload()
             return
         flash_info('{target} addons directory set to {path}'.format(target=target.upper(), path=path))
         _addons_directory.refresh()
 
-    def clear_directory():
+    async def clear_directory():
         was_active = target == state.target
-        set_addons_root(None, target)
+        await set_addons_root(None, target)
         if was_active:
             ui.navigate.reload()
         _addons_directory.refresh()
@@ -67,7 +67,7 @@ def _addons_directory(target: str):
             ui.button('🗑️ Clear', on_click=clear_directory).tooltip('Forget this folder')
 
 
-@shell.page('/settings')
+@shell.page('/settings', needs_addons=False)
 def settings_page():
     state = get_state()
     config = state.config

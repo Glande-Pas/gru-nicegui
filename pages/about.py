@@ -21,7 +21,7 @@ Add-on hosting, organization, and moderation are handled entirely by ESOUI.com.
 """
 
 
-@shell.page('/about')
+@shell.page('/about', needs_addons=False)
 def about_page():
     ui.markdown(ABOUT)
     ui.separator()

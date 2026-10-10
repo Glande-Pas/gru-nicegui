@@ -3,12 +3,14 @@
 
 """Process-wide app state and shared business-logic helpers."""
 
+import asyncio
 import concurrent.futures
 import contextlib
 import functools
 import io
 import locale
 import pathlib
+import threading
 import time
 import warnings
 
@@ -39,34 +41,54 @@ class AppState:
         self.api_loaded = time.monotonic()
         self.pending_search = ''
         self.local = None
+        self.local_loaded = False
         self.target = self.config.get('app', 'target', fallback='live')
         if not self.target_available(self.target):
             self.target = 'live'
-        self.load_local()
 
     def target_available(self, target: str) -> bool:
         root = self.config.get(f'{GAME}.addons', root_key(target), fallback='')
         return bool(root) and pathlib.Path(root).exists()
 
     def load_local(self) -> None:
+        """Scan the addons folder against ESOUI data: slow, call from a worker."""
         self.local = None
-        if self.target_available(self.target):
-            self.local = Folder(GAME, self.config, self.target)
-            self.local.scan(self.api)
-            with contextlib.suppress(OSError):
-                prune_downloads(self.local.installed)
-            self.api.prune_cache()
+        try:
+            if self.target_available(self.target):
+                local = Folder(GAME, self.config, self.target)
+                local.scan(self.api)
+                self.local = local
+                with contextlib.suppress(OSError):
+                    prune_downloads(local.installed)
+                self.api.prune_cache()
+        finally:
+            self.local_loaded = True
 
 
 _state = None
+_state_lock = threading.Lock()
+_load_lock = asyncio.Lock()
 
 
 def get_state() -> AppState:
+    """The process-wide state. Cheap: the addons folder is scanned by ensure_loaded()."""
     global _state
     if _state is None:
-        _state = AppState()
-        spawn_ambiguous_resolution()
+        with _state_lock:
+            if _state is None:
+                _state = AppState()
     return _state
+
+
+async def ensure_loaded() -> None:
+    """Scan the addons folder once, off the event loop, before a page needs `state.local`."""
+    state = get_state()
+    if state.local_loaded:
+        return
+    async with _load_lock:
+        if not state.local_loaded:
+            await run.io_bound(state.load_local)
+            spawn_ambiguous_resolution()
 
 
 def flash_warning(message: str):
@@ -138,7 +160,7 @@ def refresh_api():
     rescan()
 
 
-def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
+async def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
     """Persist a new addons root for `target` (None clears it) and reinitialise the Folder if it's the active one."""
     state = get_state()
     state.config.set(f'{GAME}.addons', root_key(target), str(path.resolve()) if path else '')
@@ -149,11 +171,11 @@ def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
             state.target = 'live'
             state.config.set('app', 'target', 'live')
             save_config(state.config)
-        state.load_local()
+        await run.io_bound(state.load_local)
         spawn_ambiguous_resolution()
 
 
-def set_target(target: str):
+async def set_target(target: str):
     """Switch the active game channel, persisting the choice."""
     state = get_state()
     if target == state.target or not state.target_available(target):
@@ -161,7 +183,7 @@ def set_target(target: str):
     state.target = target
     state.config.set('app', 'target', target)
     save_config(state.config)
-    state.load_local()
+    await run.io_bound(state.load_local)
     spawn_ambiguous_resolution()
 
 
@@ -173,16 +195,21 @@ def spawn_ambiguous_resolution():
         return
     if _ambiguous_future is not None and not _ambiguous_future.done():
         return
-    if not find_ambiguous(state.local, state.api):
-        return
-    _ambiguous_future = _RESOLVE_EXECUTOR.submit(resolve_exact_matches, state.local, state.api)
+    _ambiguous_future = _RESOLVE_EXECUTOR.submit(_resolve_ambiguous, state.local, state.api)
+
+
+def _resolve_ambiguous(local, api) -> list | None:
+    """Worker job: None when nothing was ambiguous, else the addons resolved."""
+    if not find_ambiguous(local, api):
+        return None
+    return resolve_exact_matches(local, api)
 
 
 def ambiguous_resolution_pending() -> bool:
     return _ambiguous_future is not None
 
 
-def poll_ambiguous_resolution() -> bool:
+async def poll_ambiguous_resolution() -> bool:
     """Call periodically; returns True once a pending background resolution has finished."""
     global _ambiguous_future
     if _ambiguous_future is None or not _ambiguous_future.done():
@@ -195,8 +222,10 @@ def poll_ambiguous_resolution() -> bool:
         flash_warning('Auto-resolving ambiguous add-ons failed: {error}'.format(error=exc))
         return True
 
+    if resolved is None:
+        return False
     if resolved:
-        get_state().local.export_state()
+        await run.io_bound(get_state().local.export_state)
     return True
 
 
@@ -250,18 +279,18 @@ def ranked_candidates(addon) -> list:
     return rank_candidates(addon, match_candidates(addon), get_state().api, sortkey() or 'downloads')
 
 
-def set_match(addon, infos):
+async def set_match(addon, infos):
     """Record which online addon an installed folder is, as `gru match` does, persisted in addons.csv."""
     if addon.infos is not None:
         addon.infos.deregister(addon)
     addon.link(infos)
-    get_state().local.export_state()
+    await run.io_bound(get_state().local.export_state)
 
 
-def set_locked(addon, locked: bool):
+async def set_locked(addon, locked: bool):
     """Pin or unpin an installed addon to its current version, persisted in addons.csv as the CLI does."""
     addon.locked = locked
-    get_state().local.export_state()
+    await run.io_bound(get_state().local.export_state)
 
 
 def diff_addon_patch(addon, api, local) -> tuple[int, str, list[str]]:
