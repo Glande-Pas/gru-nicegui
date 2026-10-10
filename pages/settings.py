@@ -102,7 +102,7 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.select(sort_options, value=current_sort if current_sort in sort_options else 'downloads',
-              label='Sort search results by', on_change=on_sort_change)
+              label='Sort search results by', on_change=on_sort_change).classes('w-full max-w-xl')
 
     def on_search_results_change(e):
         config.set('app', 'search_results', str(int(e.value or 20)))
@@ -110,7 +110,7 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.number('Number of add-ons listed on the Search page', value=config.getint('app', 'search_results', fallback=20),
-              min=1, max=200, step=5, precision=0, on_change=on_search_results_change)
+              min=1, max=200, step=5, precision=0, on_change=on_search_results_change).classes('w-full max-w-xl')
 
     ui.separator()
     ui.label('Patches').classes('text-h6')
@@ -144,7 +144,8 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.select(vars_options, value=current_vars if current_vars in vars_options else 'ask',
-              label='When removing an add-on, its saved variables should be', on_change=on_vars_change)
+              label='When removing an add-on, its saved variables should be', on_change=on_vars_change) \
+      .classes('w-full max-w-xl')
 
     ui.separator()
     ui.label('Change log').classes('text-h6')
@@ -156,4 +157,4 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.number('Number of installs, updates and removals to keep in the log', value=log_lines, min=0, step=10,
-              on_change=on_log_lines_change)
+              on_change=on_log_lines_change).classes('w-full max-w-xl')
