@@ -23,19 +23,19 @@ _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 _ICON_ICO = importlib.resources.files('gru_ui').joinpath('assets', 'icon.ico')
 
 
-def initial_dark() -> bool:
-    """Dark mode of the configured theme, so the first paint matches before the page applies its theme."""
-    return get_theme(load_config().get('app', 'theme', fallback=DEFAULT_THEME))['dark']
+def initial_theme() -> dict:
+    """The configured theme, so the first paint matches before the page applies it."""
+    return get_theme(load_config().get('app', 'theme', fallback=DEFAULT_THEME))
 
 
 def run():
     # Read by Windows WinForms backend, and throws if it isn't a real .ico
     app.native.start_args['icon'] = str(_ICON_ICO)
     app.native.settings['ALLOW_DOWNLOADS'] = True
-    dark = initial_dark()
-    # Window background shown until the page loads: Quasar's dark/light page colors
-    app.native.window_args['background_color'] = '#121212' if dark else '#FFFFFF'
-    ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=dark, reload=False,
+    theme = initial_theme()
+    # Window background shown until the page loads
+    app.native.window_args['background_color'] = theme['page_bg']
+    ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=theme['dark'], reload=False,
            native=True, window_size=(1400, 900), reconnect_timeout=10)
 
 

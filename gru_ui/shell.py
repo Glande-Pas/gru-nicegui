@@ -116,6 +116,9 @@ def root():
     # ui.colors only applies once the page mounts: emit the same variables and classes in the initial HTML
     # so the first paint is already themed
     names = {key: key.replace('_', '-') for key in colors}
+    # The native window's startup background color is fixed, and WebView2 can keep painting it behind the page
+    scheme = 'dark' if theme['dark'] else 'light'
+    ui.add_head_html(f'<style>html, body {{ background: {theme["page_bg"]}; color-scheme: {scheme}; }}</style>')
     ui.add_head_html('<style>body {' + ''.join(f'--q-{names[key]}: {value};' for key, value in colors.items()) + '}'
                      + ''.join(f'.text-{name} {{ color: var(--q-{name}) !important; }}'
                                f'.bg-{name} {{ background-color: var(--q-{name}) !important; }}'

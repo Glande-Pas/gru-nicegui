@@ -9,6 +9,7 @@ become hyphens) plus the .text-<name> / .bg-<name> classes, and used by those na
 THEMES = {
     'Midnight Gold': {
         'dark': True,
+        'page_bg': '#121212',
         'primary': '#FFC800',
         'secondary': '#2B2B52',
         'warning': '#FF9800',
@@ -26,6 +27,7 @@ THEMES = {
     },
     'Daylight': {
         'dark': False,
+        'page_bg': '#FFFFFF',
         'primary': '#FFC800',
         'secondary': '#2B2B52',
         'warning': '#C77700',
