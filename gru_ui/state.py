@@ -242,7 +242,7 @@ def ambiguous_resolution_pending() -> bool:
 
 
 async def poll_ambiguous_resolution() -> bool:
-    """Call periodically; returns True once a pending background resolution has finished."""
+    """Call periodically; returns True once a finished background resolution matched add-ons."""
     global _ambiguous_future
     if _ambiguous_future is None or not _ambiguous_future.done():
         return False
@@ -254,10 +254,9 @@ async def poll_ambiguous_resolution() -> bool:
         flash_warning('Auto-resolving ambiguous add-ons failed: {error}'.format(error=exc))
         return True
 
-    if resolved is None:
+    if not resolved:
         return False
-    if resolved:
-        await run.io_bound(get_state().local.export_state)
+    await run.io_bound(get_state().local.export_state)
     return True
 
 

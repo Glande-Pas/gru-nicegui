@@ -84,12 +84,9 @@ def installed_page():
             ui.label('No addons found in the configured directory.')
             return
 
-        can_update = [a for a in installed if update_pending(a)]
-        locked = [a for a in installed if a.locked and a.parent is None]
         ambiguous = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
         unmatched = [a for a in installed if a.parent is None and a.infos is None]
         unused = local.unused_deps(installed, opt=opt_deps())
-        missing = local.missing_deps(installed, opt=opt_deps())
 
         async def offer_matching():
             for i, addon in enumerate(ambiguous, 1):
@@ -160,26 +157,35 @@ def installed_page():
             await refresh_api_async()
             body.refresh()
 
-        with ui.row().classes('w-full items-center gap-2'):
-            summary = ['{installed} addon(s) installed, {updates} update(s) available.'
-                       .format(installed=len(installed), updates=len(can_update))]
-            if locked:
-                summary.append('{count} version locked.'.format(count=len(locked)))
-            if ambiguous:
-                summary.append('{count} matching several ESOUI add-ons.'.format(count=len(ambiguous)))
-            ui.label(' '.join(summary)).classes('text-caption flex-grow min-w-0')
-            with ui.row().classes('gap-2 shrink-0 no-wrap'):
-                ui.button('⬆️ Update all', on_click=update_all) \
-                  .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
-                           'and install their missing dependencies').set_enabled(bool(can_update or ambiguous))
-                ui.button('⬇️ Install missing', on_click=install_missing) \
-                  .tooltip('Install dependencies that installed add-ons require but are not present.') \
-                  .set_enabled(bool(missing))
-                ui.button('🧹 Remove unused', on_click=remove_unused) \
-                  .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused))
-                ui.button('🔄 Refresh', on_click=refresh_all) \
-                  .tooltip('Re-fetch the ESOUI add-on list and rescan the add-ons folder')
-                ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
+        @ui.refreshable
+        def summary_row():
+            updatable = [a for a in installed if update_pending(a)]
+            locked_now = [a for a in installed if a.locked and a.parent is None]
+            ambiguous_now = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
+            unused_now = local.unused_deps(installed, opt=opt_deps())
+            missing_now = local.missing_deps(installed, opt=opt_deps())
+            with ui.row().classes('w-full items-center gap-2'):
+                summary = ['{installed} addon(s) installed, {updates} update(s) available.'
+                           .format(installed=len(installed), updates=len(updatable))]
+                if locked_now:
+                    summary.append('{count} version locked.'.format(count=len(locked_now)))
+                if ambiguous_now:
+                    summary.append('{count} matching several ESOUI add-ons.'.format(count=len(ambiguous_now)))
+                ui.label(' '.join(summary)).classes('text-caption flex-grow min-w-0')
+                with ui.row().classes('gap-2 shrink-0 no-wrap'):
+                    ui.button('⬆️ Update all', on_click=update_all) \
+                      .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
+                               'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
+                    ui.button('⬇️ Install missing', on_click=install_missing) \
+                      .tooltip('Install dependencies that installed add-ons require but are not present.') \
+                      .set_enabled(bool(missing_now))
+                    ui.button('🧹 Remove unused', on_click=remove_unused) \
+                      .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))
+                    ui.button('🔄 Refresh', on_click=refresh_all) \
+                      .tooltip('Re-fetch the ESOUI add-on list and rescan the add-ons folder')
+                    ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
+
+        summary_row()
 
         not_found = [a for a in unmatched if a not in ambiguous]
         _warning_banner(ambiguous, '{count} add-on(s) match several ESOUI add-ons — pick the right one on each card:')
@@ -198,7 +204,7 @@ def installed_page():
                         'toggle-color=primary toggle-text-color=button-fg')
         with ui.row().classes('w-full items-center no-wrap'):
             ui.input('Filter', placeholder='Filter installed add-ons…', value=filter_state['term'],
-                     on_change=set_filter('term')).classes('flex-grow')
+                     on_change=set_filter('term')).props('debounce=300').classes('flex-grow')
             ui.toggle({'all': 'All', 'outdated': 'Updateable', 'unused': 'Unused'}, value=filter_state['kind'],
                       on_change=set_filter('kind')).props(toggle_props)
             ui.toggle({'all': 'Both', 'libs': 'Libraries', 'addons': 'Add-ons'}, value=filter_state['libs'],
@@ -214,7 +220,7 @@ def installed_page():
 
             standalone = [a for a in installed if a.parent is None]
             if kind != 'all':
-                matching = set(can_update if kind == 'outdated' else unused)
+                matching = set([a for a in installed if update_pending(a)] if kind == 'outdated' else unused)
                 standalone = [a for a in standalone if a in matching]
             def is_lib(a):
                 return getattr(a, 'is_lib', False) is True
@@ -279,7 +285,8 @@ def installed_page():
                                                                                     total=len(children))
                     children = matching_children[addon]
                 addon_card(addon, api, local, body.refresh, children=children or None, children_label=children_label,
-                           dimmed=narrowing and not own_ok(addon), expanded=narrowing)
+                           dimmed=narrowing and not own_ok(addon), expanded=narrowing,
+                           on_lock_change=summary_row.refresh)
 
         addon_list(filter_state['term'], filter_state['kind'], filter_state['libs'])
 
