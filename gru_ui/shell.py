@@ -8,7 +8,7 @@ import inspect
 import webbrowser
 from collections.abc import Callable
 
-from nicegui import run, ui
+from nicegui import app, run, ui
 
 from .state import get_state, ensure_loaded, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME
@@ -153,6 +153,10 @@ def root():
                 with ui.row().classes('items-center gap-2 w-full p-2 rounded') as nav_rows[path]:
                     ui.label(icon)
                     ui.label(title)
+        with ui.row().classes('items-center gap-2 w-full p-2 rounded cursor-pointer hover:bg-gray-500/20 text-link') \
+                .on('click', app.shutdown):
+            ui.label('🚪')
+            ui.label('Exit')
         with ui.column().classes('w-full flex-grow min-h-0 overflow-hidden'):
             ui.image(str(_LOGO)).classes('w-full').props('fit=cover position=top')
 
