@@ -10,7 +10,7 @@ from collections import defaultdict
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, rescan_async, refresh_api, opt_deps, patch_updates, flash_summary,
+from gru_ui.state import (get_state, rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary,
                           flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
@@ -157,7 +157,7 @@ def installed_page():
             ui.download(out.getvalue().encode(), 'addons.csv', 'text/csv')
 
         async def refresh_all():
-            await run.io_bound(refresh_api)
+            await refresh_api_async()
             body.refresh()
 
         with ui.row().classes('w-full items-center gap-2'):

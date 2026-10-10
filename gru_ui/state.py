@@ -7,6 +7,7 @@ import asyncio
 import concurrent.futures
 import contextlib
 import functools
+import html
 import io
 import locale
 import pathlib
@@ -28,6 +29,7 @@ from .utils import strip_eso_colors
 
 GAME = 'ESO'
 API_MAX_AGE = 3600  # seconds, matches gru's HTTP cache lifetime
+API_RETRY_AFTER = 300  # seconds before retrying a failed refresh
 
 _RESOLVE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix='gru-resolve')
 _ambiguous_future = None
@@ -113,26 +115,51 @@ def flash_warnings(caught):
     flash_summary('Warnings', list(dict.fromkeys(str(w.message) for w in caught)), flash_warning)
 
 
-def _invalidate_api():
-    """Drop all cached ESOUI data (HTTP and in-memory) in place."""
+def _invalidate_api() -> str | None:
+    """Reload all ESOUI data (HTTP and in-memory) in place. If the new data can't be fetched, the previous data
+    is kept and the reason returned; the next attempt is then due in a few minutes."""
     state = get_state()
     api = state.api
+    names = [name for name, attr in vars(type(api)).items() if isinstance(attr, functools.cached_property)]
+    previous = {name: api.__dict__[name] for name in names if name in api.__dict__}
+
     api.session.cache.clear()
     api.zip_session.cache.clear()
-    for name, attr in vars(type(api)).items():
-        if isinstance(attr, functools.cached_property):
-            api.__dict__.pop(name, None)
-    state.api_loaded = time.monotonic()
+    for name in names:
+        api.__dict__.pop(name, None)
+    with warnings.catch_warnings(record=True, category=UserWarning) as caught:
+        warnings.simplefilter('always')
+        loaded = bool(api.addons)
+        if not api.categories and previous.get('categories'):
+            api.__dict__['categories'] = previous['categories']
+    if loaded or not previous.get('addons'):
+        state.api_loaded = time.monotonic()
+        return None
+
+    for name in names:
+        api.__dict__.pop(name, None)
+    api.__dict__.update(previous)
+    state.api_loaded = time.monotonic() - API_MAX_AGE + API_RETRY_AFTER
+    return '; '.join(dict.fromkeys(str(w.message) for w in caught)) or 'no data received'
 
 
-def rescan():
-    """Re-scan the addons directory, against fresh ESOUI data if the loaded data is over an hour old."""
+def rescan() -> str | None:
+    """Re-scan the addons directory, against fresh ESOUI data if the loaded data is over an hour old.
+    Returns why the data couldn't be refreshed (previous data kept), else None."""
     state = get_state()
+    error = None
     if time.monotonic() - state.api_loaded > API_MAX_AGE:
-        _invalidate_api()
+        error = _invalidate_api()
     if state.local is not None:
         state.local.scan(state.api)
         spawn_ambiguous_resolution()
+    return error
+
+
+def _flash_refresh_error(error: str | None):
+    if error:
+        flash_warning('Could not refresh ESOUI data, keeping the previous data: {error}'.format(
+            error=html.escape(error)))
 
 
 def search_for(term: str):
@@ -151,13 +178,18 @@ def dependency_search_term(dir_name: str) -> str:
 
 async def rescan_async():
     """rescan() off the event loop, as it may fetch fresh ESOUI data."""
-    await run.io_bound(rescan)
+    _flash_refresh_error(await run.io_bound(rescan))
 
 
-def refresh_api():
-    """Force-refresh the ESOUI data, then rescan against it."""
-    _invalidate_api()
+def refresh_api() -> str | None:
+    """Force-refresh the ESOUI data, then rescan against it. Returns why the refresh failed, else None."""
+    error = _invalidate_api()
     rescan()
+    return error
+
+
+async def refresh_api_async():
+    _flash_refresh_error(await run.io_bound(refresh_api))
 
 
 async def set_addons_root(path: pathlib.Path | None, target: str = 'live'):
