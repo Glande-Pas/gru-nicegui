@@ -4,6 +4,7 @@
 """Shared page chrome: header with logo and the left nav drawer, built once around the app's pages."""
 
 import importlib.resources
+import inspect
 import webbrowser
 from collections.abc import Callable
 
@@ -95,7 +96,9 @@ def page(path: str, needs_addons: bool = True):
                     ui.label('Loading Add-Ons…').classes('text-h6')
                 await ensure_loaded()
                 loading.delete()
-            builder()
+            result = builder()
+            if inspect.isawaitable(result):
+                await result
 
         _ROUTES[path] = loading_builder
         return builder

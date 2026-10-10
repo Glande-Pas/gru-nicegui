@@ -76,6 +76,45 @@ def _safe_patch_status(addon, patch_path: pathlib.Path) -> str | None:
         return None
 
 
+def _read_patches(patch_dir: pathlib.Path) -> list[tuple[pathlib.Path, str]]:
+    """The saved patch files and their text, sorted by name."""
+    files = sorted(patch_dir.glob('*.patch')) if patch_dir.exists() else []
+    return [(path, path.read_text(errors='replace')) for path in files]
+
+
+def _discard(*paths: pathlib.Path) -> None:
+    for path in paths:
+        path.unlink(missing_ok=True)
+
+
+def _plan_patch(addon, patch_path: pathlib.Path, new_text: str | None) -> str | None:
+    """None if the saved patch already matches `new_text`, else 'new' or the squash action to confirm."""
+    existing = patch_path.read_text() if patch_path.exists() else None
+    if existing == new_text or (existing is not None and new_text is not None and
+                                _diff_content_equal(existing, new_text)):
+        return None
+    if existing is None:
+        return 'new'
+    if new_text is None:
+        return 'remove'
+    return 'update' if _patch_status(addon, patch_path) == 'applied' else 'replace'
+
+
+def _write_patch(patch_dir: pathlib.Path, patch_path: pathlib.Path, new_text: str | None) -> None:
+    if new_text is None:
+        patch_path.unlink(missing_ok=True)
+        return
+    patch_dir.mkdir(exist_ok=True)
+    patch_path.write_text(new_text)
+
+
+def _stage_upload(patch_dir: pathlib.Path, addon_dir: str, text: str) -> pathlib.Path:
+    patch_dir.mkdir(exist_ok=True)
+    staging_path = patch_dir / f'{addon_dir}.patch.upload'
+    staging_path.write_text(text)
+    return staging_path
+
+
 async def _check_statuses(checks):
     """Fill in each patch card's status off the event loop, enabling its buttons once known."""
     for addon, patch_path, summary, label, apply_btn, revert_btn in checks:
@@ -125,19 +164,19 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
                  'files as .rej, for manual reconciliation — or cancel and fix the patch first.') \
           .classes('text-caption')
 
-        def apply_partial():
+        async def apply_partial():
+            dialog.close()
             try:
-                partial_result = gru_patch.addon_patch_file(addon, patch_path, partial=True)
+                async with global_progress('Applying patch to {title}...'.format(title=addon.title)):
+                    partial_result = await run.io_bound(gru_patch.addon_patch_file, addon, patch_path, partial=True)
+                    if commit_to is not None:
+                        await run.io_bound(patch_path.replace, commit_to)
             except PatchError as exc:
                 if commit_to is not None:
-                    patch_path.unlink(missing_ok=True)
-                dialog.close()
+                    await run.io_bound(_discard, patch_path)
                 flash_warning('Patch is invalid: {error}'.format(error=exc))
                 return
 
-            if commit_to is not None:
-                patch_path.replace(commit_to)
-            dialog.close()
             applied = [f for f in partial_result.files if f.applied]
             rejects = [f for f in partial_result.files if f.reject]
             if applied:
@@ -153,10 +192,10 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
                     'page will discard these changes.']))
             refresh()
 
-        def cancel():
-            if commit_to is not None:
-                patch_path.unlink(missing_ok=True)
+        async def cancel():
             dialog.close()
+            if commit_to is not None:
+                await run.io_bound(_discard, patch_path)
 
         with ui.row().classes('w-full'):
             ui.button('🔧 Apply what can be applied', on_click=apply_partial).classes('flex-grow') \
@@ -165,32 +204,33 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
     dialog.open()
 
 
-def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathlib.Path | None = None):
+async def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathlib.Path | None = None):
     """Apply the patch, offering a partial-apply dialog on conflict."""
     try:
-        result = gru_patch.addon_patch_file(addon, patch_path)
+        async with global_progress('Applying patch to {title}...'.format(title=addon.title)):
+            result = await run.io_bound(gru_patch.addon_patch_file, addon, patch_path)
     except PatchError as exc:
         if commit_to is not None:
-            patch_path.unlink(missing_ok=True)
+            await run.io_bound(_discard, patch_path)
         flash_warning('Patch is invalid: {error}'.format(error=exc))
         return
 
     if not result.files:
         if commit_to is not None:
-            patch_path.unlink(missing_ok=True)
+            await run.io_bound(_discard, patch_path)
         flash_info('No changes to apply in patch.')
         refresh()
     elif result.backed_out:
         _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=commit_to)
     else:
         if commit_to is not None:
-            patch_path.replace(commit_to)
+            await run.io_bound(patch_path.replace, commit_to)
         flash_info('Applied patch successfully to {title}.'.format(title=bold(addon.title)))
         refresh()
 
 
 @shell.page('/patches')
-def patches_page():
+async def patches_page():
     state = get_state()
     local = state.local
     api = state.api
@@ -206,8 +246,8 @@ def patches_page():
     upload_state = {'last_name': None}
 
     @ui.refreshable
-    def body():
-        patches = sorted(patch_dir.glob('*.patch')) if patch_dir.exists() else []
+    async def body():
+        patches = await run.io_bound(_read_patches, patch_dir)
 
         async def confirm_squash(addon, action: str) -> bool:
             with ui.dialog() as confirm, ui.card():
@@ -239,39 +279,27 @@ def patches_page():
             saved, warned = [], []
             for addon in linked:
                 log.push('Checking {title}…'.format(title=addon.title))
+                patch_path = patch_dir / f'{addon.dir}.patch'
                 try:
                     n, text, messages = await run.io_bound(diff_addon_patch, addon, api, local)
+                    new_text = text if n > 0 else None
+                    plan = await run.io_bound(_plan_patch, addon, patch_path, new_text)
                 except Exception as exc:
                     print(f'Skipping {addon.dir}: failed to check for local changes', file=sys.stderr)
                     traceback.print_exc()
                     log.push('Skipped {title}: {error}'.format(title=addon.title, error=exc))
                     continue
                 warned += messages
-                new_text = text if n > 0 else None
-
-                patch_path = patch_dir / f'{addon.dir}.patch'
-                existing = patch_path.read_text() if patch_path.exists() else None
-                if existing == new_text or (existing is not None and new_text is not None and
-                                            _diff_content_equal(existing, new_text)):
+                if plan is None:
                     continue
 
-                if existing is not None:
-                    if new_text is None:
-                        action = 'remove'
-                    elif _patch_status(addon, patch_path) == 'applied':
-                        action = 'update'
-                    else:
-                        action = 'replace'
-                    if not await confirm_squash(addon, action):
-                        log.push('Skipped {title}.'.format(title=addon.title))
-                        continue
+                if plan != 'new' and not await confirm_squash(addon, plan):
+                    log.push('Skipped {title}.'.format(title=addon.title))
+                    continue
 
+                await run.io_bound(_write_patch, patch_dir, patch_path, new_text)
                 if new_text is not None:
-                    patch_dir.mkdir(exist_ok=True)
-                    patch_path.write_text(new_text)
                     saved.append('{title} ({count} modified file(s))'.format(title=bold(addon.title), count=n))
-                else:
-                    patch_path.unlink(missing_ok=True)
             dialog.close()
             flash_summary('Warnings', list(dict.fromkeys(warned)), flash_warning)
             if saved:
@@ -298,10 +326,8 @@ def patches_page():
                 flash_warning('No installed addon found matching {dir}.'.format(dir=bold(addon_dir)))
                 return
 
-            patch_dir.mkdir(exist_ok=True)
-            staging_path = patch_dir / f'{addon_dir}.patch.upload'
-            staging_path.write_text(text)
-            _try_apply_patch(addon, staging_path, body.refresh, commit_to=patch_dir / f'{addon_dir}.patch')
+            staging_path = await run.io_bound(_stage_upload, patch_dir, addon_dir, text)
+            await _try_apply_patch(addon, staging_path, body.refresh, commit_to=patch_dir / f'{addon_dir}.patch')
 
         ui.upload(label='Import a patch — drag & drop or browse', on_upload=handle_upload,
                   auto_upload=True).props('accept=.patch').classes('w-full')
@@ -312,9 +338,7 @@ def patches_page():
 
         pending_checks = []
 
-        for patch_file in patches:
-            text = patch_file.read_text(errors='replace')
-
+        for patch_file, text in patches:
             header = {}
             body_start = 0
             for i, line in enumerate(text.splitlines()):
@@ -360,8 +384,8 @@ def patches_page():
                               on_click=lambda t=text, n=patch_file.name: ui.download(t.encode(), n)) \
                       .tooltip('Export this patch file')
 
-                    def delete(pf=patch_file):
-                        pf.unlink()
+                    async def delete(pf=patch_file):
+                        await run.io_bound(_discard, pf)
                         body.refresh()
 
                     ui.button('🗑️ Delete', on_click=delete) \
@@ -377,4 +401,4 @@ def patches_page():
 
         background_tasks.create(_check_statuses(pending_checks), name='patch-status')
 
-    body()
+    await body()
