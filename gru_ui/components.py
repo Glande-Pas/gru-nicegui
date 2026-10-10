@@ -4,7 +4,6 @@
 """Reusable addon card component and the install/remove/update actions behind its buttons."""
 
 import contextlib
-import functools
 import html
 import pathlib
 import warnings
@@ -14,7 +13,7 @@ from nicegui import run, ui
 
 from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
-from .utils import open_folder, si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id, bold, code, \
+from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anchor_id, bold, code, \
     installed_item, updated_item
 from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
@@ -90,15 +89,10 @@ def _category_label(api, category_id: int) -> str:
         return str(category_id)
 
 
-@functools.lru_cache(maxsize=256)
-def _cached_icon(icon_url: str):
-    return load_icon(icon_url)
-
-
-def _category_icon(api, category_id: int):
+def _category_icon(api, category_id: int) -> str | None:
+    """The category's remote icon URL, fetched by the browser."""
     try:
-        url = api.cat(category_id)['icon']
-        return _cached_icon(url)
+        return api.cat(category_id)['icon'] or None
     except Exception:
         return None
 
@@ -302,9 +296,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             if not is_embedded:
                 category = (addon.infos.metadata if is_installed and addon.infos else
                             addon.metadata if not is_installed else {}).get('category')
-                icon_path = _category_icon(api, category) if category else None
-                if icon_path:
-                    ui.image(str(icon_path)).classes('w-10 h-10 shrink-0')
+                icon_url = _category_icon(api, category) if category else None
+                if icon_url:
+                    ui.image(icon_url).classes('w-10 h-10 shrink-0')
 
             with ui.column().classes('flex-grow gap-1 min-w-0'):
                 _render_meta_grid(addon, api, local)

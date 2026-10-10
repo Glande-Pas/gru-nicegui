@@ -7,15 +7,9 @@ import importlib.metadata
 import locale
 import math
 import os
-import pathlib
 import re
 import subprocess
 import sys
-import warnings
-from urllib.parse import urlparse
-
-import requests
-from gru.config import user_cache
 
 
 def si_suffixed(num: int) -> str:
@@ -72,26 +66,6 @@ def fuzzy_score(query: str, text: str) -> tuple[int, int, int] | None:
 def anchor_id(dir_name: str) -> str:
     """A stable, link-safe HTML id for a top-level installed addon's card."""
     return 'addon-' + re.sub(r'[^\w-]', '_', dir_name)
-
-
-def load_icon(icon_url: str) -> pathlib.Path | None:
-    """Download icon to cache and return local path, or None on failure."""
-    try:
-        fname = pathlib.Path(urlparse(icon_url).path).name
-        dest = user_cache() / fname
-        if dest.exists():
-            return dest
-
-        with requests.get(icon_url, stream=True, allow_redirects=True, timeout=5) as dl:
-            dl.raise_for_status()
-            with open(dest, 'wb') as f:
-                for chunk in dl.iter_content(1024):
-                    f.write(chunk)
-        return dest
-
-    except Exception as err:
-        warnings.warn('Error loading icon {url!r}: {err}'.format(url=icon_url, err=err))
-        return None
 
 
 def open_folder(path) -> None:
