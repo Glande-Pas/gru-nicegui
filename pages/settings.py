@@ -92,17 +92,6 @@ def settings_page():
     _addons_directory('pts')
 
     ui.separator()
-    ui.label('Optional dependencies').classes('text-h6')
-    opt = config.getboolean(f'{GAME}.addons', 'optional')
-
-    def on_opt_change(e):
-        config.set(f'{GAME}.addons', 'optional', 'on' if e.value else 'off')
-        save_config(config)
-        ui.notify('Saved.', type='positive')
-
-    ui.switch('Include optional dependencies', value=opt, on_change=on_opt_change)
-
-    ui.separator()
     ui.label('Search sort order').classes('text-h6')
     sort_options = {'downloads': 'Downloads', 'monthly': 'Monthly downloads', 'favorites': 'Favorites'}
     current_sort = config.get(f'{GAME}.addons', 'sortkey')
