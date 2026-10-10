@@ -6,7 +6,7 @@
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import get_state, sortkey, poll_ambiguous_resolution
+from gru_ui.state import get_state, sortkey, search_results, poll_ambiguous_resolution
 from gru_ui.components import addon_card
 
 
@@ -23,18 +23,22 @@ async def search_page():
         return
 
     generation = 0
+    labels = {'downloads': 'downloads', 'monthly': 'monthly downloads', 'favorites': 'favorites'}
+
+    def popular() -> list:
+        key = sortkey() or 'downloads'
+        return sorted(api.addons.values(), key=lambda a: a.metadata.get(key) or 0, reverse=True)[:search_results()]
 
     @ui.refreshable
     async def results(term: str):
         nonlocal generation
         generation += 1
         mine = generation
-        if not term:
-            return
         with ui.row().classes('items-center gap-2') as searching:
             ui.spinner()
             ui.label('Searching…')
-        found = await run.io_bound(lambda: api.search(term, tiebreakattr=sortkey(), maxlen=20))
+        found = await run.io_bound(lambda: api.search(term, tiebreakattr=sortkey(), maxlen=search_results())
+                                   if term else popular())
         if mine != generation:  # a newer search superseded this one
             return
         searching.delete()
@@ -43,7 +47,9 @@ async def search_page():
             ui.label('No results found.')
             return
 
-        ui.label('{count} result(s):'.format(count=len(found))).classes('text-caption')
+        heading = ('{count} result(s):'.format(count=len(found)) if term else
+                   'Most popular add-ons by {key}:'.format(key=labels[sortkey() or 'downloads']))
+        ui.label(heading).classes('text-caption')
         ui.separator()
         for addon in found:
             addon_card(addon, api, local, lambda: results.refresh(term))

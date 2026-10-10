@@ -104,6 +104,14 @@ def settings_page():
     ui.select(sort_options, value=current_sort if current_sort in sort_options else 'downloads',
               label='Sort search results by', on_change=on_sort_change)
 
+    def on_search_results_change(e):
+        config.set('app', 'search_results', str(int(e.value or 20)))
+        save_config(config)
+        ui.notify('Saved.', type='positive')
+
+    ui.number('Number of add-ons listed on the Search page', value=config.getint('app', 'search_results', fallback=20),
+              min=1, max=200, step=5, precision=0, on_change=on_search_results_change)
+
     ui.separator()
     ui.label('Patches').classes('text-h6')
     patches = config.getboolean('app', 'patches', fallback=False)

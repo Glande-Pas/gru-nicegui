@@ -276,6 +276,11 @@ def patch_updates() -> bool:
     return get_state().config.getboolean(f'{GAME}.addons', 'patch_updates')
 
 
+def search_results() -> int:
+    """How many add-ons the Search page lists at most."""
+    return max(1, get_state().config.getint('app', 'search_results', fallback=20))
+
+
 def sortkey() -> str | None:
     key = get_state().config.get(f'{GAME}.addons', 'sortkey')
     return key if key in {'downloads', 'monthly', 'favorites'} else None
