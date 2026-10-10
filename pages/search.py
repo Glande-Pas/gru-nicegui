@@ -3,7 +3,7 @@
 
 """Search page: find and install addons."""
 
-from nicegui import ui
+from nicegui import run, ui
 
 from gru_ui import shell
 from gru_ui.state import get_state, sortkey, poll_ambiguous_resolution
@@ -11,7 +11,7 @@ from gru_ui.components import addon_card
 
 
 @shell.page('/search')
-def search_page():
+async def search_page():
     state = get_state()
     api = state.api
     local = state.local
@@ -22,11 +22,22 @@ def search_page():
         ui.label('No addons directory configured. Go to Settings to set it up.').classes('text-warning')
         return
 
+    generation = 0
+
     @ui.refreshable
-    def results(term: str):
+    async def results(term: str):
+        nonlocal generation
+        generation += 1
+        mine = generation
         if not term:
             return
-        found = api.search(term, tiebreakattr=sortkey(), maxlen=20)
+        with ui.row().classes('items-center gap-2') as searching:
+            ui.spinner()
+            ui.label('Searching…')
+        found = await run.io_bound(lambda: api.search(term, tiebreakattr=sortkey(), maxlen=20))
+        if mine != generation:  # a newer search superseded this one
+            return
+        searching.delete()
 
         if not found:
             ui.label('No results found.')
@@ -46,7 +57,7 @@ def search_page():
 
     ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \
       .props('debounce=300').classes('w-full')
-    results(search_state['term'])
+    await results(search_state['term'])
     async def poll():
         if await poll_ambiguous_resolution():
             results.refresh(search_state['term'])

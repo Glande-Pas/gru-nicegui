@@ -41,6 +41,7 @@ class AppState:
         self.config = load_config()
         self.api = API.live(self.config)
         self.api_loaded = time.monotonic()
+        self.candidates: dict[str, list] = {}  # dir -> ESOUI candidates, valid for the loaded API data
         self.pending_search = ''
         self.local = None
         self.local_loaded = False
@@ -134,6 +135,7 @@ def _invalidate_api() -> str | None:
             api.__dict__['categories'] = previous['categories']
     if loaded or not previous.get('addons'):
         state.api_loaded = time.monotonic()
+        state.candidates = {}
         return None
 
     for name in names:
@@ -291,13 +293,17 @@ def update_pending(addon) -> bool:
 
 def match_candidates(addon) -> list:
     """The online addons an installed folder could be, when several share its dir."""
-    try:
-        get_state().api.dir(addon.dir)
-    except AmbiguousDirectory as err:
-        return err.candidates
-    except FileNotFoundError:
-        pass
-    return []
+    cache = get_state().candidates
+    if addon.dir not in cache:
+        try:
+            get_state().api.dir(addon.dir)
+            found = []
+        except AmbiguousDirectory as err:
+            found = err.candidates
+        except FileNotFoundError:
+            found = []
+        cache[addon.dir] = found
+    return list(cache[addon.dir])
 
 
 def ambiguous_candidates(addon) -> list:
