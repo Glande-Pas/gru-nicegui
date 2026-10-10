@@ -23,16 +23,16 @@ async def _browse_directory(start: str) -> str | None:
 @ui.refreshable
 def _addons_directory(target: str):
     state = get_state()
-    current_root = state.config.get(f'{GAME}.addons', root_key(target)) or '(not set)'
+    current_root = state.config.get(f'{GAME}.addons', root_key(target)) or None
     with ui.row().classes('items-center gap-1'):
         ui.label('Current:')
-        current = ui.label(current_root)
-        if current_root != '(not set)':
+        current = ui.label(current_root or '(not set)')
+        if current_root:
             current.classes('cursor-pointer underline').tooltip('Open in the file explorer')
             current.on('click', lambda: open_folder(current_root))
 
     with ui.row().classes('items-center w-full'):
-        path_input = ui.input('Path', value='' if current_root == '(not set)' else current_root).classes('flex-grow')
+        path_input = ui.input('Path', value=current_root or '').classes('flex-grow')
 
         async def browse():
             selected = await _browse_directory(path_input.value or '')
@@ -44,14 +44,14 @@ def _addons_directory(target: str):
     def apply_directory():
         path = pathlib.Path(path_input.value or '')
         if not path.exists() or not path.is_dir():
-            ui.notify(f'Directory not found: {path}', type='negative')
+            ui.notify('Directory not found: {path}'.format(path=path), type='negative')
             return
         had_target = state.target_available(target)
         set_addons_root(path, target)
         if not had_target or target == state.target:
             ui.navigate.reload()
             return
-        flash_info(f'{target.upper()} addons directory set to {path}')
+        flash_info('{target} addons directory set to {path}'.format(target=target.upper(), path=path))
         _addons_directory.refresh()
 
     def clear_directory():
@@ -104,7 +104,7 @@ def settings_page():
 
     ui.separator()
     ui.label('Search sort order').classes('text-h6')
-    sort_options = ['downloads', 'monthly', 'favorites']
+    sort_options = {'downloads': 'Downloads', 'monthly': 'Monthly downloads', 'favorites': 'Favorites'}
     current_sort = config.get(f'{GAME}.addons', 'sortkey')
 
     def on_sort_change(e):
@@ -112,7 +112,7 @@ def settings_page():
         save_config(config)
         ui.notify('Saved.', type='positive')
 
-    ui.select(sort_options, value=current_sort if current_sort in sort_options else sort_options[0],
+    ui.select(sort_options, value=current_sort if current_sort in sort_options else 'downloads',
               label='Sort search results by', on_change=on_sort_change)
 
     ui.separator()

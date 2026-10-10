@@ -21,11 +21,15 @@ def _date(value: str):
 
 
 def _change(entry) -> str:
+    """The kind of change: a key of `KINDS`."""
     if entry.version == NOT_INSTALLED:
-        return '🗑️ Removed'
+        return 'removed'
     elif entry.previous_state == NOT_INSTALLED:
-        return '⬇️ Installed'
-    return '⬆️ Updated'
+        return 'installed'
+    return 'updated'
+
+
+KINDS = {'installed': '⬇️ Installed', 'updated': '⬆️ Updated', 'removed': '🗑️ Removed'}
 
 
 @shell.page('/changes')
@@ -41,7 +45,7 @@ def changes_page():
 
     changes = read_changes(local)
     log_lines = state.config.getint(f'{GAME}.addons', 'log_lines')
-    ui.label(f'The last {log_lines} changes are kept, which can be changed in Settings.').classes('text-caption')
+    ui.label('The last {count} changes are kept, which can be changed in Settings.'.format(count=log_lines)).classes('text-caption')
 
     if not changes:
         ui.label('No changes recorded yet.')
@@ -56,8 +60,7 @@ def changes_page():
         'link': entry.link or None,
     } for entry in reversed(changes)]
 
-    kinds = ['⬇️ Installed', '⬆️ Updated', '🗑️ Removed']
-    kind_state = {k: True for k in kinds}
+    kind_state = {k: True for k in KINDS}
 
     @ui.refreshable
     def table():
@@ -75,7 +78,7 @@ def changes_page():
                 with ui.row().classes('w-full items-center py-1 border-b border-white/10'):
                     ui.label(r['date'].strftime('%Y-%m-%d %H:%M') if r['date'] else '?').classes('w-40')
                     ui.label(r['addon']).classes('w-52')
-                    ui.label(r['change']).classes('w-28')
+                    ui.label(KINDS[r['change']]).classes('w-28')
                     ui.label(r['from']).classes('w-24')
                     ui.label(r['to']).classes('w-24')
                     with ui.element('div').classes('w-20'):
@@ -87,7 +90,7 @@ def changes_page():
         table.refresh()
 
     with ui.row():
-        for k in kinds:
-            ui.checkbox(k, value=True, on_change=lambda e, k=k: on_toggle(k, e.value))
+        for k, kind_label in KINDS.items():
+            ui.checkbox(kind_label, value=True, on_change=lambda e, k=k: on_toggle(k, e.value))
 
     table()

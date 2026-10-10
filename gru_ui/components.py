@@ -6,6 +6,7 @@
 import contextlib
 import functools
 import html
+import pathlib
 import warnings
 import webbrowser
 
@@ -13,7 +14,8 @@ from nicegui import run, ui
 
 from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
-from .utils import open_folder, si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id
+from .utils import open_folder, si_suffixed, load_icon, eso_colored, strip_eso_colors, anchor_id, bold, code, \
+    installed_item, updated_item
 from .state import (opt_deps, rescan, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
@@ -42,7 +44,8 @@ async def global_progress(label: str):
         bar = ui.linear_progress(value=0, show_value=False)
 
     def tick():
-        label_el.set_text(f'{state.message} {state.frac:.0%}' if state.frac is not None else state.message)
+        label_el.set_text('{message} {fraction:.0%}'.format(message=state.message, fraction=state.frac)
+                          if state.frac is not None else state.message)
         bar.set_value(state.frac or 0)
         bar.props(f'indeterminate={"true" if state.frac is None else "false"}')
 
@@ -131,7 +134,8 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
     favorites = meta.get('favorites')
 
     if is_installed and addon.locked:
-        version_str = f'{version} 🔒' + (f' (latest: {upstream_version})' if addon.can_update else '')
+        version_str = ('{version} 🔒 (latest: {latest})' if addon.can_update else '{version} 🔒') \
+            .format(version=version, latest=upstream_version)
     elif upstream_version and addon.can_update and not update_moot(addon):
         version_str = version + ' → ' + _bold_diff_suffix(version, upstream_version)
     else:
@@ -141,7 +145,7 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
         return [
             ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
             ('Version',   version_str,                                         2),
-            ('Directory', str(addon.folder),                                   4),
+            ('Directory', addon.folder,                                        4),
         ]
 
     rows = [
@@ -149,26 +153,27 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
         ('Version',   version_str,                                         1),
         ('Updated',   date.strftime('%x') if date else '?',               1),
         ('Category',  _category_label(api, category) if category else '?', 2),
-        ('Downloads', f'{si_suffixed(downloads)} ({si_suffixed(monthly)}/mo)' if downloads else '?', 1),
+        ('Downloads', '{total} ({monthly}/mo)'.format(total=si_suffixed(downloads), monthly=si_suffixed(monthly))
+                      if downloads else '?', 1),
         ('Favorites', si_suffixed(favorites) if favorites else '?',        1),
     ]
 
     if is_installed:
-        rows.append(('Directory', str(addon.folder), 4))
+        rows.append(('Directory', addon.folder, 4))
 
     return rows
 
 
 def _render_meta_grid(addon, api, local):
-    def value(lbl, val):
-        if lbl != 'Directory':
+    def value(val):
+        if not isinstance(val, pathlib.Path):
             return f'<span>{val}</span>'
-        path = html.escape(val, quote=True)
+        path = html.escape(str(val), quote=True)
         return f'<span class="gru-meta-nowrap"><a data-path="{path}" style="cursor:pointer">{path}</a></span>'
 
     cells = ''.join(
         f'<div class="gru-meta-cell" style="grid-column:span {span}">'
-        f'<span class="gru-meta-lbl">{lbl}</span>{value(lbl, val)}</div>'
+        f'<span class="gru-meta-lbl">{lbl}</span>{value(val)}</div>'
         for lbl, val, span in _metadata_rows(addon, api, local)
     )
     ui.html(
@@ -202,15 +207,14 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
     mark = '🔄' if updatable else '✅'
     if top is own_top:
         ui.html(f'<span>{mark} {dep.dir}</span>').tooltip(
-            'Bundled with this add-on' + (', update available' if updatable else ''))
+            'Bundled with this add-on, update available' if updatable else 'Bundled with this add-on')
     else:
         ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>').tooltip(
-            'Installed' + (', update available' if updatable else '') + ': go to its card')
+            'Installed, update available: go to its card' if updatable else 'Installed: go to its card')
 
 
 def _render_dependencies(addon, local, dimmed: bool) -> None:
-    for label, deps in (('Requires', addon.deps), ('Works with', addon.optdeps)):
-        optional = label == 'Works with'
+    for label, deps, optional in (('Requires', addon.deps, False), ('Works with', addon.optdeps, True)):
         if not deps:
             continue
         with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
@@ -256,17 +260,19 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
     if is_installed and has_missing:
         status = '❌ Missing dependencies'
     elif candidates:
-        status = f'❓ Matches {len(candidates)} ESOUI add-ons' + (', 🔒 version locked' if is_locked else '')
+        status = ('❓ Matches {count} ESOUI add-ons, 🔒 version locked' if is_locked else
+                  '❓ Matches {count} ESOUI add-ons').format(count=len(candidates))
     elif is_installed and can_update and addon.parent is not None:
         status = '🔄 Update available as a standalone library'
     elif is_installed and can_update:
         status = '🔄 Update available'
     elif is_locked:
-        status = '🔒 Version locked' + (', update available' if addon.can_update and not update_moot(addon) else '')
+        status = ('🔒 Version locked, update available' if addon.can_update and not update_moot(addon) else
+                  '🔒 Version locked')
     elif is_installed and unused:
         status = '⚠️ Unused library'
     elif ambiguous_copies:
-        status = '❓ Possibly installed' + (', 🔒 version locked' if locked_copy else '')
+        status = '❓ Possibly installed, 🔒 version locked' if locked_copy else '❓ Possibly installed'
     elif locked_copy:
         status = '✅ Installed, 🔒 version locked'
     elif already_installed:
@@ -274,7 +280,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
     if is_installed and addon.infos is not None and len(addon.infos.folders) > 1 and addon.version_rank:
         rank = '🟢 active copy' if addon.version_rank == 'active' else '⚪ superseded copy'
-        status = f'{status}, {rank}' if status else rank
+        status = '{status}, {rank}'.format(status=status, rank=rank) if status else rank
 
     status_span = (
         f' <span style="display:inline-block; font-size:0.85em; font-weight:600; opacity:0.75">{status}</span>'
@@ -310,7 +316,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     elif candidates:
                         ui.html('<span style="font-size:0.85em">Could be any of:</span>')
                         for c in candidates:
-                            external_link(f'🔗 {eso_colored(c.title)}', c.metadata['link'])
+                            external_link('🔗 {title}'.format(title=eso_colored(c.title)), c.metadata['link'])
                     else:
                         ui.html('<span class="gru-badge-warn" title="No ESOUI add-on uses this folder name, so it '
                                 'can\'t be updated.">⚠️ Not found on ESOUI</span>')
@@ -357,7 +363,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                      if addon.infos else "Add-on isn't matched online")
 
         if children:
-            with ui.expansion(children_label or f'{len(children)} bundled addon(s)', icon='expand_more',
+            with ui.expansion(children_label or '{count} bundled addon(s)'.format(count=len(children)), icon='expand_more',
                               value=expanded).classes('w-full'):
                 for child in sorted(children, key=lambda a: a.title.lower()):
                     addon_card(child, api, local, refresh)
@@ -372,14 +378,14 @@ def _handle_save(addon, api, local, refresh):
     try:
         n, messages = save_addon_patch(addon, api, local)
     except Exception as exc:
-        flash_warning(f'Failed to check <b>{eso_colored(addon.title)}</b>: {exc}')
+        flash_warning('Failed to check {title}: {error}'.format(title=bold(addon.title), error=exc))
         return
     for message in messages:
         flash_warning(message)
     if n:
-        flash_info(f'Saved patch for <b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
+        flash_info('Saved patch for {title} ({count} modified file(s))'.format(title=bold(addon.title), count=n))
     elif n == 0:
-        flash_info(f'No local changes to save for <b>{eso_colored(addon.title)}</b>.')
+        flash_info('No local changes to save for {title}.'.format(title=bold(addon.title)))
     refresh()
 
 
@@ -398,13 +404,13 @@ def _do_remove(addon: InstalledAddon, local, remove_vars: bool = False):
         local.remove(addon, remove_vars=remove_vars)
     flash_warnings(caught)
     rescan()
-    flash_info(f'Removed: <b>{eso_colored(title)}</b>')
+    flash_info('Removed: {title}'.format(title=bold(title)))
 
 
 def _open_confirm_remove(addon: InstalledAddon, local, refresh):
     files = local.saved_variable_files(addon)
     with ui.dialog() as dialog, ui.card():
-        ui.html(f'<b>{eso_colored(addon.title)}</b> has saved variables:')
+        ui.html('{title} has saved variables:'.format(title=bold(addon.title)))
         ui.code('\n'.join(str(path) for path in files))
         ui.label("Deleting them discards this add-on's settings and data for all characters.").classes('text-caption')
 
@@ -423,7 +429,7 @@ def _open_confirm_remove(addon: InstalledAddon, local, refresh):
 
 async def _run_install(addon: AddonInfo, api, local, refresh):
     before = {a.dir for a in local.installed}
-    async with global_progress(f'Installing {addon.title}...') as state:
+    async with global_progress('Installing {title}...'.format(title=addon.title)) as state:
         progress = progress_factory(state)
 
         def work():
@@ -435,7 +441,7 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
         caught = await run.io_bound(work)
     flash_warnings(caught)
     await rescan_async()
-    flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
+    flash_summary('Installed', [installed_item(a.title or a.dir, a.version)
                                 for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
                                 if a.dir not in before])
     refresh()
@@ -443,17 +449,17 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
 
 async def _run_update(addon: InstalledAddon, api, local, refresh):
     if addon.locked:
-        flash_warning(f'<b>{eso_colored(addon.title)}</b> is version locked, not updating.')
+        flash_warning('{title} is version locked, not updating.'.format(title=bold(addon.title)))
         return
     if addon.infos is None:
-        flash_warning(f'<b>{eso_colored(addon.title)}</b> is not matched to a single ESOUI add-on, not updating.')
+        flash_warning('{title} is not matched to a single ESOUI add-on, not updating.'.format(title=bold(addon.title)))
         return
     if update_moot(addon):
-        flash_warning(f'<b>{eso_colored(addon.title)}</b> is superseded by a newer copy, not updating.')
+        flash_warning('{title} is superseded by a newer copy, not updating.'.format(title=bold(addon.title)))
         return
 
     before = {a.folder: (a.title, a.version) for a in local.installed}
-    async with global_progress(f'Updating {addon.title}...') as state:
+    async with global_progress('Updating {title}...'.format(title=addon.title)) as state:
         progress = progress_factory(state)
         path = addon.folder if addon.parent is None else None
 
@@ -470,9 +476,9 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
     installed, updated = [], []
     for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):
         if folder not in before:
-            installed.append(f'<b>{eso_colored(title)}</b> {v_after}')
+            installed.append(installed_item(title, v_after))
         elif before[folder][1] != v_after:
-            updated.append(f'<b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+            updated.append(updated_item(title, before[folder][1], v_after))
     flash_summary('Installed', installed)
     flash_summary('Updated', updated)
     refresh()
@@ -482,8 +488,9 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
     with ui.dialog() as dialog, ui.card().classes('w-full max-w-2xl'):
         if context:
             ui.label(context).classes('text-caption')
-        ui.html(f'Several ESOUI add-ons install a <code>{addon.dir}</code> folder. Which one is '
-                f'<b>{eso_colored(addon.title)}</b> {addon.version} by {eso_colored(addon.author or "?")}?')
+        ui.html('Several ESOUI add-ons install a {folder} folder. Which one is {title} {version} by {author}?'
+                .format(folder=code(addon.dir), title=bold(addon.title), version=addon.version,
+                        author=eso_colored(addon.author or '?')))
         spinner = ui.spinner('dots', size='lg')
         content = ui.column().classes('w-full gap-2')
     dialog.open()
@@ -493,11 +500,15 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
         spinner.delete()
 
         def label(candidate):
-            guess = ' — best guess' if candidate is ranked[0] else ''
-            current = ' — current match' if candidate is addon.infos else ''
-            return (f'{strip_eso_colors(candidate.title)} {candidate.version} by '
-                    f'{strip_eso_colors(candidate.author)} '
-                    f'({si_suffixed(candidate.metadata.get("downloads") or 0)} downloads){guess}{current}')
+            text = '{title} {version} by {author} ({downloads} downloads)'.format(
+                title=strip_eso_colors(candidate.title), version=candidate.version,
+                author=strip_eso_colors(candidate.author),
+                downloads=si_suffixed(candidate.metadata.get('downloads') or 0))
+            if candidate is ranked[0]:
+                text = '{text} — best guess'.format(text=text)
+            if candidate is addon.infos:
+                text = '{text} — current match'.format(text=text)
+            return text
 
         with content:
             current_index = next((i for i, c in enumerate(ranked) if c is addon.infos), 0)

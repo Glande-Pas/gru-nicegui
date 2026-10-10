@@ -32,7 +32,7 @@ def search_page():
             ui.label('No results found.')
             return
 
-        ui.label(f'{len(found)} result(s):').classes('text-caption')
+        ui.label('{count} result(s):'.format(count=len(found))).classes('text-caption')
         ui.separator()
         for addon in found:
             addon_card(addon, api, local, lambda: results.refresh(term))

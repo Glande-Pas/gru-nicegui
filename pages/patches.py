@@ -17,7 +17,7 @@ from gru.config import user_config, encoding_open
 from gru_ui import shell
 from gru_ui.state import (get_state, flash_warning, flash_info, flash_summary, flash_warnings, logged_changes,
                           rescan_async, diff_addon_patch)
-from gru_ui.utils import eso_colored
+from gru_ui.utils import bold, code
 from gru_ui.components import global_progress, progress_factory
 
 
@@ -82,11 +82,12 @@ async def _check_statuses(checks):
         pstatus = await run.io_bound(_safe_patch_status, addon, patch_path)
         if label.is_deleted:  # page was refreshed or closed; a newer check has taken over
             return
-        label.set_content(summary + {
-            'applied': '  ·  ✅ Already applied',
-            'conflict': "  ·  ⚠️ Doesn't match current files",
-            None: '  ·  ❓ Status unknown',
-        }.get(pstatus, ''))
+        status = {
+            'applied': '✅ Already applied',
+            'conflict': "⚠️ Doesn't match current files",
+            None: '❓ Status unknown',
+        }.get(pstatus)
+        label.set_content(summary + ('  ·  ' + status if status else ''))
         if pstatus == 'applied':
             apply_btn.set_visibility(False)
             revert_btn.set_visibility(True)
@@ -98,7 +99,7 @@ async def _check_statuses(checks):
 async def _do_revert(addon, api, local, refresh):
     """Reinstall `addon` fresh from its matched ESOUI listing, discarding local changes."""
     title = addon.title
-    async with global_progress(f'Reverting {title}...') as state:
+    async with global_progress('Reverting {title}...'.format(title=title)) as state:
         progress = progress_factory(state)
 
         def work():
@@ -109,17 +110,17 @@ async def _do_revert(addon, api, local, refresh):
         caught = await run.io_bound(work)
     flash_warnings(caught)
     await rescan_async()
-    flash_info(f'Reverted: <b>{eso_colored(title)}</b> to the installed ESOUI version')
+    flash_info('Reverted: {title} to the installed ESOUI version'.format(title=bold(title)))
     refresh()
 
 
 def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=None):
     with ui.dialog() as dialog, ui.card().classes('w-full max-w-2xl'):
-        ui.html(f"<b>{eso_colored(addon.title)}</b>'s current files don't match what the patch expects "
-                '— nothing was changed, the saved patch is unchanged.')
+        ui.html("{title}'s current files don't match what the patch expects "
+                '— nothing was changed, the saved patch is unchanged.'.format(title=bold(addon.title)))
         for f in result.files:
             if f.failed:
-                ui.label(f'- {f.path}: {", ".join(f.failed)}')
+                ui.label('- {path}: {failed}'.format(path=f.path, failed=', '.join(f.failed)))
         ui.label("You can apply everything that still matches and save the rest next to the add-on's own "
                  'files as .rej, for manual reconciliation — or cancel and fix the patch first.') \
           .classes('text-caption')
@@ -131,7 +132,7 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
                 if commit_to is not None:
                     patch_path.unlink(missing_ok=True)
                 dialog.close()
-                flash_warning(f'Patch is invalid: {exc}')
+                flash_warning('Patch is invalid: {error}'.format(error=exc))
                 return
 
             if commit_to is not None:
@@ -140,15 +141,16 @@ def _open_confirm_partial_apply(addon, patch_path, result, refresh, commit_to=No
             applied = [f for f in partial_result.files if f.applied]
             rejects = [f for f in partial_result.files if f.reject]
             if applied:
-                flash_info(f'Applied {len(applied)}/{len(partial_result.files)} file(s) for '
-                           f'<b>{eso_colored(addon.title)}</b>.')
+                flash_info('Applied {applied}/{total} file(s) for {title}.'.format(
+                    applied=len(applied), total=len(partial_result.files), title=bold(addon.title)))
             else:
-                flash_warning(f'No changes could be applied to <b>{eso_colored(addon.title)}</b>.')
+                flash_warning('No changes could be applied to {title}.'.format(title=bold(addon.title)))
             if rejects:
-                reject_list = '<br/>'.join(f'<code>{f.reject}</code>' for f in rejects)
-                flash_warning('Some hunks failed and were saved for manual reconciliation:<br/>'
-                              f'{reject_list}<br/>The saved patch itself is unchanged — reinstalling this '
-                              'add-on from the Installed Add-Ons page will discard these changes.')
+                flash_warning('<br/>'.join([
+                    'Some hunks failed and were saved for manual reconciliation:',
+                    *(code(f.reject) for f in rejects),
+                    'The saved patch itself is unchanged — reinstalling this add-on from the Installed Add-Ons '
+                    'page will discard these changes.']))
             refresh()
 
         def cancel():
@@ -170,7 +172,7 @@ def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathli
     except PatchError as exc:
         if commit_to is not None:
             patch_path.unlink(missing_ok=True)
-        flash_warning(f'Patch is invalid: {exc}')
+        flash_warning('Patch is invalid: {error}'.format(error=exc))
         return
 
     if not result.files:
@@ -183,7 +185,7 @@ def _try_apply_patch(addon, patch_path: pathlib.Path, refresh, commit_to: pathli
     else:
         if commit_to is not None:
             patch_path.replace(commit_to)
-        flash_info(f'Applied patch successfully to <b>{eso_colored(addon.title)}</b>.')
+        flash_info('Applied patch successfully to {title}.'.format(title=bold(addon.title)))
         refresh()
 
 
@@ -209,13 +211,16 @@ def patches_page():
 
         async def confirm_squash(addon, action: str) -> bool:
             with ui.dialog() as confirm, ui.card():
-                ui.html(f'The saved patch for <b>{eso_colored(addon.title)}</b> differs from what '
-                        'scanning just found.')
+                ui.html('The saved patch for {title} differs from what scanning just found.'
+                        .format(title=bold(addon.title)))
                 with ui.row().classes('w-full'):
-                    ui.button(f'✅ {action}', on_click=lambda: confirm.submit(True)).classes('flex-grow') \
-                      .tooltip({'Remove': 'Delete the saved patch: the add-on no longer differs from ESOUI',
-                                'Update': 'Save the newly found changes over the existing patch',
-                                'Replace': 'Replace the saved patch with the newly found changes'}[action])
+                    button_label, tooltip = {
+                        'remove': ('✅ Remove', 'Delete the saved patch: the add-on no longer differs from ESOUI'),
+                        'update': ('✅ Update', 'Save the newly found changes over the existing patch'),
+                        'replace': ('✅ Replace', 'Replace the saved patch with the newly found changes'),
+                    }[action]
+                    ui.button(button_label, on_click=lambda: confirm.submit(True)).classes('flex-grow') \
+                      .tooltip(tooltip)
                     ui.button('⏭️ Skip', on_click=lambda: confirm.submit(False)).classes('flex-grow') \
                       .tooltip('Keep the existing saved patch')
             return bool(await confirm)
@@ -233,13 +238,13 @@ def patches_page():
 
             saved, warned = [], []
             for addon in linked:
-                log.push(f'Checking {addon.title}…')
+                log.push('Checking {title}…'.format(title=addon.title))
                 try:
                     n, text, messages = await run.io_bound(diff_addon_patch, addon, api, local)
                 except Exception as exc:
                     print(f'Skipping {addon.dir}: failed to check for local changes', file=sys.stderr)
                     traceback.print_exc()
-                    log.push(f'Skipped {addon.title}: {exc}')
+                    log.push('Skipped {title}: {error}'.format(title=addon.title, error=exc))
                     continue
                 warned += messages
                 new_text = text if n > 0 else None
@@ -252,19 +257,19 @@ def patches_page():
 
                 if existing is not None:
                     if new_text is None:
-                        action = 'Remove'
+                        action = 'remove'
                     elif _patch_status(addon, patch_path) == 'applied':
-                        action = 'Update'
+                        action = 'update'
                     else:
-                        action = 'Replace'
+                        action = 'replace'
                     if not await confirm_squash(addon, action):
-                        log.push(f'Skipped {addon.title}.')
+                        log.push('Skipped {title}.'.format(title=addon.title))
                         continue
 
                 if new_text is not None:
                     patch_dir.mkdir(exist_ok=True)
                     patch_path.write_text(new_text)
-                    saved.append(f'<b>{eso_colored(addon.title)}</b> ({n} modified file(s))')
+                    saved.append('{title} ({count} modified file(s))'.format(title=bold(addon.title), count=n))
                 else:
                     patch_path.unlink(missing_ok=True)
             dialog.close()
@@ -279,7 +284,7 @@ def patches_page():
             ui.button('💾 Scan and Save', on_click=scan_and_save) \
               .tooltip('Compare every installed add-on with its ESOUI original and save local changes as patches')
             if patches:
-                ui.label(f'{len(patches)} patch(es) in {patch_dir}').classes('text-caption')
+                ui.label('{count} patch(es) in {folder}'.format(count=len(patches), folder=patch_dir)).classes('text-caption')
 
         async def handle_upload(e):
             if e.file.name == upload_state['last_name']:
@@ -290,7 +295,7 @@ def patches_page():
             addon = next((a for a in local.installed if a.dir == addon_dir), None)
 
             if addon is None:
-                flash_warning(f'No installed addon found matching <b>{addon_dir}</b>.')
+                flash_warning('No installed addon found matching {dir}.'.format(dir=bold(addon_dir)))
                 return
 
             patch_dir.mkdir(exist_ok=True)
@@ -327,8 +332,8 @@ def patches_page():
             n_files = sum(1 for line in diff_body.splitlines() if line.startswith('--- '))
 
             addon = next((a for a in local.installed if a.dir == patch_file.stem), None)
-            summary = (f'<b>{eso_colored(addon_name)}</b> — v{version}  ·  {date}  ·  '
-                       f'{n_files} file(s) modified')
+            summary = '{name} — v{version}  ·  {date}  ·  {count} file(s) modified'.format(
+                name=bold(addon_name), version=version, date=date, count=n_files)
 
             with ui.card().classes('w-full'):
                 with ui.row().classes('w-full items-center gap-2'):

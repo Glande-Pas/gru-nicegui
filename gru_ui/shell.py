@@ -146,7 +146,7 @@ def root():
                 row.classes(add='bg-primary text-button-fg font-medium', remove='hover:bg-gray-500/20 text-link')
             else:
                 row.classes(add='hover:bg-gray-500/20 text-link', remove='bg-primary text-button-fg font-medium')
-        ui.page_title(f'Gru — {dict((p, t) for p, _, t in _PAGES).get(active, "")}')
+        ui.page_title('Gru — {page}'.format(page=dict((p, t) for p, _, t in _PAGES).get(active, '')))
 
     router = ui.context.client.sub_pages_router
     router.on_path_changed(show_active)
@@ -172,7 +172,7 @@ async def _check_for_update():
     version, release_page = latest
     with ui.card().classes('fixed bottom-4 right-4 z-50 gap-1') as card:
         with ui.row().classes('items-center justify-between w-full no-wrap'):
-            ui.label(f'Gru {version} is available').classes('font-medium')
+            ui.label('Gru {version} is available'.format(version=version)).classes('font-medium')
             ui.icon('close').classes('cursor-pointer').on('click', card.delete)
-        ui.label(f'You have {package_version("gru-nicegui")}.').classes('text-caption')
+        ui.label('You have {version}.'.format(version=package_version('gru-nicegui'))).classes('text-caption')
         ui.button('Get it', on_click=lambda: webbrowser.open(update_url(release_page)))

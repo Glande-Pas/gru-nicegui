@@ -90,7 +90,7 @@ def load_icon(icon_url: str) -> pathlib.Path | None:
         return dest
 
     except Exception as err:
-        warnings.warn(f'Error loading icon {icon_url!r}: {err}')
+        warnings.warn('Error loading icon {url!r}: {err}'.format(url=icon_url, err=err))
         return None
 
 
@@ -116,3 +116,21 @@ def package_version(package: str) -> str:
         return importlib.metadata.version(package)
     except importlib.metadata.PackageNotFoundError:
         return 'unknown'
+
+
+def bold(text: str) -> str:
+    """`text` (with ESO color codes) as bold HTML, for use as a placeholder value in a message."""
+    return f'<b>{eso_colored(text)}</b>'
+
+
+def code(text: str) -> str:
+    """`text` as monospace HTML, for use as a placeholder value in a message."""
+    return f'<code>{text}</code>'
+
+
+def installed_item(title: str, version: str) -> str:
+    return '{title} {version}'.format(title=bold(title), version=version)
+
+
+def updated_item(title: str, before: str, after: str) -> str:
+    return '{title} {before} → {after}'.format(title=bold(title), before=before, after=after)

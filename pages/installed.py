@@ -14,7 +14,7 @@ from gru_ui.state import (get_state, rescan, rescan_async, refresh_api, opt_deps
                           flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
-from gru_ui.utils import eso_colored, strip_eso_colors, anchor_id, fuzzy_score
+from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
 
 def _do_remove_unused(local, remove_vars):
@@ -24,7 +24,7 @@ def _do_remove_unused(local, remove_vars):
     flash_warnings(caught)
     rescan()
     after = {a.dir for a in local.installed}
-    flash_summary('Removed', [f'<b>{eso_colored(before[dir_] or dir_)}</b>'
+    flash_summary('Removed', [bold(before[dir_] or dir_)
                               for dir_ in sorted(before.keys() - after, key=lambda d: (before[d] or d).lower())])
 
 
@@ -46,13 +46,13 @@ def _open_confirm_remove_unused(local, with_vars, refresh):
 
 
 def _warning_banner(addons, heading: str):
-    """A dismissable warning box listing `addons`, linking to their cards."""
+    """A dismissable warning box listing `addons`, linking to their cards. `heading` takes a {count}."""
     if not addons:
         return
     lines = [f'- [{strip_eso_colors(a.title) or a.dir}](#{anchor_id(a.dir)})'
              for a in sorted(addons, key=lambda a: (a.title or a.dir).lower())]
     with ui.element('div').classes('relative w-full bg-warning/20 border border-warning rounded p-2') as banner:
-        ui.markdown(f'**{len(addons)} {heading}**\n' + '\n'.join(lines)).classes('pr-6')
+        ui.markdown('**{heading}**\n'.format(heading=heading.format(count=len(addons))) + '\n'.join(lines)).classes('pr-6')
         ui.icon('close').classes('cursor-pointer absolute top-2 right-2').on('click', banner.delete)
 
 
@@ -88,8 +88,8 @@ def installed_page():
         async def offer_matching():
             for i, addon in enumerate(ambiguous, 1):
                 if addon.infos is None:
-                    context = (f'Update all: add-on {i}/{len(ambiguous)} can\'t be updated until matched. '
-                               'Close this dialog to skip it.')
+                    context = ("Update all: add-on {index}/{total} can't be updated until matched. "
+                               'Close this dialog to skip it.').format(index=i, total=len(ambiguous))
                     await open_choose_match(addon, lambda: None, context)
 
         async def update_all():
@@ -111,9 +111,9 @@ def installed_page():
             installed_now, updated = [], []
             for folder, (title, v_after) in sorted(after.items(), key=lambda x: x[1][0].lower()):
                 if folder not in before:
-                    installed_now.append(f'<b>{eso_colored(title)}</b> {v_after}')
+                    installed_now.append(installed_item(title, v_after))
                 elif before[folder][1] != v_after:
-                    updated.append(f'<b>{eso_colored(title)}</b> {before[folder][1]} → {v_after}')
+                    updated.append(updated_item(title, before[folder][1], v_after))
             flash_summary('Installed', installed_now)
             flash_summary('Updated', updated)
             body.refresh()
@@ -131,7 +131,7 @@ def installed_page():
                 caught = await run.io_bound(work)
             flash_warnings(caught)
             await rescan_async()
-            flash_summary('Installed', [f'<b>{eso_colored(a.title or a.dir)}</b> {a.version}'
+            flash_summary('Installed', [installed_item(a.title or a.dir, a.version)
                                         for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
                                         if a.dir not in before])
             body.refresh()
@@ -155,10 +155,13 @@ def installed_page():
             body.refresh()
 
         with ui.row().classes('w-full items-center gap-2'):
-            locked_note = f' {len(locked)} version locked.' if locked else ''
-            locked_note += f' {len(ambiguous)} matching several ESOUI add-ons.' if ambiguous else ''
-            ui.label(f'{len(installed)} addon(s) installed, {len(can_update)} update(s) available.{locked_note}') \
-              .classes('text-caption flex-grow min-w-0')
+            summary = ['{installed} addon(s) installed, {updates} update(s) available.'
+                       .format(installed=len(installed), updates=len(can_update))]
+            if locked:
+                summary.append('{count} version locked.'.format(count=len(locked)))
+            if ambiguous:
+                summary.append('{count} matching several ESOUI add-ons.'.format(count=len(ambiguous)))
+            ui.label(' '.join(summary)).classes('text-caption flex-grow min-w-0')
             with ui.row().classes('gap-2 shrink-0 no-wrap'):
                 ui.button('⬆️ Update all', on_click=update_all) \
                   .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
@@ -173,8 +176,8 @@ def installed_page():
                 ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
 
         not_found = [a for a in unmatched if a not in ambiguous]
-        _warning_banner(ambiguous, "add-on(s) match several ESOUI add-ons — pick the right one on each card:")
-        _warning_banner(not_found, "add-on(s) weren't found on ESOUI and can't be updated:")
+        _warning_banner(ambiguous, '{count} add-on(s) match several ESOUI add-ons — pick the right one on each card:')
+        _warning_banner(not_found, "{count} add-on(s) weren't found on ESOUI and can't be updated:")
 
         def refresh_list():
             addon_list.refresh(filter_state['term'], filter_state['kind'], filter_state['libs'])
@@ -250,16 +253,24 @@ def installed_page():
                 if kind == 'unused' and libs == 'addons':
                     ui.label('Only libraries can be marked as unused').classes('text-caption')
                     return
-                words = [{'outdated': 'out-of-date', 'unused': 'unused'}.get(kind, ''),
-                         {'libs': 'library', 'addons': 'non-library'}.get(libs, ''), 'addons']
-                ui.label(f'No {" ".join(w for w in words if w)} to show').classes('text-caption')
+                ui.label({
+                    ('all', 'all'): 'No addons to show',
+                    ('all', 'libs'): 'No library addons to show',
+                    ('all', 'addons'): 'No non-library addons to show',
+                    ('outdated', 'all'): 'No out-of-date addons to show',
+                    ('outdated', 'libs'): 'No out-of-date library addons to show',
+                    ('outdated', 'addons'): 'No out-of-date non-library addons to show',
+                    ('unused', 'all'): 'No unused addons to show',
+                    ('unused', 'libs'): 'No unused library addons to show',
+                }[kind, libs]).classes('text-caption')
                 return
 
             for addon in sorted(standalone, key=_sort_key):
                 children = children_map.get(addon, [])
                 children_label = None
                 if narrowing:
-                    children_label = f'{len(matching_children[addon])}/{len(children)} bundled addon(s) match'
+                    children_label = '{matching}/{total} bundled addon(s) match'.format(matching=len(matching_children[addon]),
+                                                                                    total=len(children))
                     children = matching_children[addon]
                 addon_card(addon, api, local, body.refresh, children=children or None, children_label=children_label,
                            dimmed=narrowing and not own_ok(addon), expanded=narrowing)

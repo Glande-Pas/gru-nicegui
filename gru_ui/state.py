@@ -80,9 +80,10 @@ def flash_info(message: str):
 def flash_summary(heading: str, items: list[str], flash=flash_info):
     """One notification for a whole batch, e.g. 'Updated (3):' followed by one line per item."""
     if len(items) == 1:
-        flash(f'{heading}: {items[0]}')
+        flash('{heading}: {item}'.format(heading=heading, item=items[0]))
     elif items:
-        flash(f'{heading} ({len(items)}):<br/>' + '<br/>'.join(f'• {item}' for item in items))
+        flash('{heading} ({count}):'.format(heading=heading, count=len(items)) + '<br/>'
+              + '<br/>'.join(f'• {item}' for item in items))
 
 
 def flash_warnings(caught):
@@ -191,7 +192,7 @@ def poll_ambiguous_resolution() -> bool:
     try:
         resolved = future.result()
     except Exception as exc:
-        flash_warning(f'Auto-resolving ambiguous add-ons failed: {exc}')
+        flash_warning('Auto-resolving ambiguous add-ons failed: {error}'.format(error=exc))
         return True
 
     if resolved:
