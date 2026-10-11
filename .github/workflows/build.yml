@@ -58,7 +58,13 @@ jobs:
       - name: Install gru and gru-nicegui
         shell: bash
         run: |
-          git clone -b "${{ github.ref_name }}" https://gitlab.com/glandepas/gru.git "$RUNNER_TEMP/gru"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # get gru latest tag, not necessarily named like ours
+            git clone https://gitlab.com/glandepas/gru.git "$RUNNER_TEMP/gru"
+            git -C "$RUNNER_TEMP/gru" checkout "$(git -C "$RUNNER_TEMP/gru" tag --sort=-v:refname | head -n1)"
+          else
+            git clone -b "${{ github.ref_name }}" https://gitlab.com/glandepas/gru.git "$RUNNER_TEMP/gru"
+          fi
           pip install --upgrade pip
           pip install "$RUNNER_TEMP/gru"
           pip install -e ".[build]"
