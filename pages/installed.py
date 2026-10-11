@@ -154,7 +154,8 @@ def installed_page():
         def export_list():
             out = io.StringIO()
             local.write_csv(out)
-            ui.download(out.getvalue().encode(), 'addons.csv', 'text/csv')
+            name = 'addons.csv' if state.target == 'live' else f'addons-{state.target}.csv'
+            ui.download(out.getvalue().encode(), name, 'text/csv')
 
         async def refresh_all():
             await refresh_api_async()
