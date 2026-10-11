@@ -3,6 +3,7 @@
 
 """Formatting helpers, ported from gru-toga."""
 
+import html
 import importlib.metadata
 import locale
 import math
@@ -100,6 +101,11 @@ def bold(text: str) -> str:
 def code(text: str) -> str:
     """`text` as monospace HTML, for use as a placeholder value in a message."""
     return f'<code>{text}</code>'
+
+
+def abbr(text: str, title: str) -> str:
+    """`text` as HTML with a hover explanation, for use as a placeholder value in a message."""
+    return '<abbr title="{title}">{text}</abbr>'.format(title=html.escape(title, quote=True), text=text)
 
 
 def installed_item(title: str, version: str) -> str:

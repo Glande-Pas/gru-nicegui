@@ -160,7 +160,7 @@ def rescan() -> str | None:
 
 def _flash_refresh_error(error: str | None):
     if error:
-        flash_warning('Could not refresh ESOUI data, keeping the previous data: {error}'.format(
+        flash_warning('Could not refresh ESOUI.com data, keeping the previous data: {error}'.format(
             error=html.escape(error)))
 
 

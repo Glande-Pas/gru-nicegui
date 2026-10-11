@@ -73,7 +73,7 @@ def changes_page():
                 ui.label('Change').classes('w-28')
                 ui.label('From').classes('w-24')
                 ui.label('To').classes('w-24')
-                ui.label('ESOUI').classes('w-20')
+                ui.label('ESOUI.com').classes('w-20')
             for r in visible:
                 with ui.row().classes('w-full items-center py-1 border-b border-white/10'):
                     ui.label(r['date'].strftime('%Y-%m-%d %H:%M') if r['date'] else '?').classes('w-40')

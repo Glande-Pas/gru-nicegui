@@ -12,7 +12,7 @@ Gru is an independent, unofficial tool. It is not affiliated with, endorsed by, 
 Bethesda Softworks, ESOUI, Minion, or the Desplicable Me franchise.
 The Elder Scrolls Online and ESOUI are trademarks of their respective owners.
 
-Add-on hosting, organization, and moderation are handled entirely by ESOUI.com.
+Add-on hosting, organization, and moderation are handled entirely by ESOUI.
 Gru's code is licensed under [EUPL-1.2](LICENSE.md).
 
 ## Getting started
@@ -28,7 +28,7 @@ Gru's code is licensed under [EUPL-1.2](LICENSE.md).
 2. Start it. On first start, you may need to open **Settings** and point it at your ESO `AddOns` folder, typically
    `Documents\Elder Scrolls Online\live\AddOns` on Windows.
 3. - **Installed Add-Ons** lists what you have and what can be updated
-   - **Search** finds add-ons on ESOUI
+   - **Search** finds add-ons on ESOUI.com
    - **Recent Changes** lists the latest get/remove/update operations done with Gru
    - **Patches** (if enabled in Settings) saves your own edits to add-ons so they can be re-applied after updates
 

@@ -149,7 +149,7 @@ async def _do_revert(addon, api, local, refresh):
         caught = await run.io_bound(work)
     flash_warnings(caught)
     await rescan_async()
-    flash_info('Reverted: {title} to the installed ESOUI version'.format(title=bold(title)))
+    flash_info('Reverted: {title} to the installed ESOUI.com version'.format(title=bold(title)))
     refresh()
 
 
@@ -255,7 +255,7 @@ async def patches_page():
                         .format(title=bold(addon.title)))
                 with ui.row().classes('w-full'):
                     button_label, tooltip = {
-                        'remove': ('✅ Remove', 'Delete the saved patch: the add-on no longer differs from ESOUI'),
+                        'remove': ('✅ Remove', 'Delete the saved patch: the add-on no longer differs from ESOUI.com'),
                         'update': ('✅ Update', 'Save the newly found changes over the existing patch'),
                         'replace': ('✅ Replace', 'Replace the saved patch with the newly found changes'),
                     }[action]
@@ -310,7 +310,8 @@ async def patches_page():
 
         with ui.row().classes('w-full items-center gap-2'):
             ui.button('💾 Scan and Save', on_click=scan_and_save) \
-              .tooltip('Compare every installed add-on with its ESOUI original and save local changes as patches')
+              .tooltip('Compare every installed add-on with its ESOUI.com original '
+                       'and save local changes as patches')
             if patches:
                 ui.label('{count} patch(es) in {folder}'.format(count=len(patches), folder=patch_dir)).classes('text-caption')
 
@@ -375,9 +376,9 @@ async def patches_page():
                         on_click=lambda a=addon: _do_revert(a, api, local, body.refresh))
                     revert_btn.set_visibility(False)
                     if addon is not None:
-                        revert_btn.tooltip('Reinstalls from ESOUI, discarding these changes -- not a '
+                        revert_btn.tooltip('Reinstalls from ESOUI.com, discarding these changes -- not a '
                                            'hunk-by-hunk undo' if addon.infos else
-                                           "Add-on isn't matched to an ESOUI listing")
+                                           "Add-on isn't matched to an ESOUI.com listing")
                         pending_checks.append((addon, patch_file, summary, label, apply_btn, revert_btn))
 
                     ui.button('⬇️ Download',

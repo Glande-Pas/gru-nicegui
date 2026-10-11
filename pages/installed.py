@@ -170,11 +170,11 @@ def installed_page():
                 if locked_now:
                     summary.append('{count} version locked.'.format(count=len(locked_now)))
                 if ambiguous_now:
-                    summary.append('{count} matching several ESOUI add-ons.'.format(count=len(ambiguous_now)))
+                    summary.append('{count} matching several ESOUI.com add-ons.'.format(count=len(ambiguous_now)))
                 ui.label(' '.join(summary)).classes('text-caption flex-grow min-w-0')
                 with ui.row().classes('gap-2 shrink-0 no-wrap'):
                     ui.button('⬆️ Update all', on_click=update_all) \
-                      .tooltip('Update every add-on with a newer ESOUI version (locked ones are skipped), '
+                      .tooltip('Update every add-on with a newer ESOUI.com version (locked ones are skipped), '
                                'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
                     ui.button('⬇️ Install missing', on_click=install_missing) \
                       .tooltip('Install dependencies that installed add-ons require but are not present.') \
@@ -182,14 +182,15 @@ def installed_page():
                     ui.button('🧹 Remove unused', on_click=remove_unused) \
                       .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))
                     ui.button('🔄 Refresh', on_click=refresh_all) \
-                      .tooltip('Re-fetch the ESOUI add-on list and rescan the add-ons folder')
+                      .tooltip('Re-fetch the ESOUI.com add-on list and rescan the add-ons folder')
                     ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
 
         summary_row()
 
         not_found = [a for a in unmatched if a not in ambiguous]
-        _warning_banner(ambiguous, '{count} add-on(s) match several ESOUI add-ons — pick the right one on each card:')
-        _warning_banner(not_found, "{count} add-on(s) weren't found on ESOUI and can't be updated:")
+        _warning_banner(ambiguous,
+                        '{count} add-on(s) match several ESOUI.com add-ons — pick the right one on each card:')
+        _warning_banner(not_found, "{count} add-on(s) weren't found on ESOUI.com and can't be updated:")
 
         def refresh_list():
             addon_list.refresh(filter_state['term'], filter_state['kind'], filter_state['libs'])

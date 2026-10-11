@@ -190,8 +190,8 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
     if found is None:
         ui.html(f'<a style="cursor:pointer">{"➕" if optional else "❌"} {dep.dir}</a>').on(
             'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip(
-                'Not installed, but optional: search ESOUI for it' if optional else
-                'Missing, and needed: search ESOUI for it')
+                'Not installed, but optional: search ESOUI.com for it' if optional else
+                'Missing, and needed: search ESOUI.com for it')
         return
     top, own_top = found, addon
     while top.parent is not None:
@@ -257,8 +257,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
         if is_installed and has_missing:
             status = '❌ Missing dependencies'
         elif candidates:
-            status = ('❓ Matches {count} ESOUI add-ons, 🔒 version locked' if is_locked else
-                      '❓ Matches {count} ESOUI add-ons').format(count=len(candidates))
+            status = ('❓ Matches {count} ESOUI.com add-ons, 🔒 version locked' if is_locked else
+                      '❓ Matches {count} ESOUI.com add-ons').format(count=len(candidates))
         elif is_installed and can_update and addon.parent is not None:
             status = '🔄 Update available as a standalone library'
         elif is_installed and can_update:
@@ -309,14 +309,14 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                 if not is_embedded:
                     with ui.column().classes('items-end shrink-0'):
                         if link:
-                            external_link('🔗 ESOUI page', link, style='font-size:0.85em')
+                            external_link('🔗 ESOUI.com page', link, style='font-size:0.85em')
                         elif candidates:
                             ui.html('<span style="font-size:0.85em">Could be any of:</span>')
                             for c in candidates:
                                 external_link('🔗 {title}'.format(title=eso_colored(c.title)), c.metadata['link'])
                         else:
-                            ui.html('<span class="gru-badge-warn" title="No ESOUI add-on uses this folder name, so it '
-                                    'can\'t be updated.">⚠️ Not found on ESOUI</span>')
+                            ui.html('<span class="gru-badge-warn" title="No ESOUI.com add-on uses this folder name, '
+                                    'so it can\'t be updated.">⚠️ Not found on ESOUI.com</span>')
 
             if is_installed and local is not None:
                 _render_dependencies(addon, local, dimmed)
@@ -329,7 +329,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                     + ' folder and records it as this add-on' if ambiguous_copies else None)
                     btn = ui.button('⬇️ Install', on_click=lambda: _run_install(addon, api, local, refresh))
                     btn.set_enabled(not locked_copy)
-                    btn.tooltip(install_help or 'Download this add-on from ESOUI into your add-ons folder')
+                    btn.tooltip(install_help or 'Download this add-on from ESOUI.com into your add-ons folder')
 
                 if is_installed:
                     ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh)) \
@@ -339,13 +339,13 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         label = '⬆️ Install standalone' if is_embedded else '⬆️ Update'
                         up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
                         up_btn.tooltip('Install the update as a standalone library add-on' if is_embedded else
-                                       'Update to the latest ESOUI version')
+                                       'Update to the latest ESOUI.com version')
 
                     # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
                     # permanent -- remove the add-on and install the right one instead of changing it.
                     if not is_embedded and candidates:
-                        ui.button('🔗 Match ESOUI listing', on_click=lambda: open_choose_match(addon, refresh)) \
-                          .tooltip('Select which ESOUI add-on this folder is, which several share')
+                        ui.button('🔗 Match ESOUI.com listing', on_click=lambda: open_choose_match(addon, refresh)) \
+                          .tooltip('Select which ESOUI.com add-on this folder is, which several share')
 
                     if not is_embedded:
                         lock_label = '🔓 Unlock version' if is_locked else '🔒 Lock version'
@@ -462,7 +462,8 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
         flash_warning('{title} is version locked, not updating.'.format(title=bold(addon.title)))
         return
     if addon.infos is None:
-        flash_warning('{title} is not matched to a single ESOUI add-on, not updating.'.format(title=bold(addon.title)))
+        flash_warning('{title} is not matched to a single ESOUI.com add-on, not updating.'
+                      .format(title=bold(addon.title)))
         return
     if update_moot(addon):
         flash_warning('{title} is superseded by a newer copy, not updating.'.format(title=bold(addon.title)))
@@ -498,7 +499,7 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
     with ui.dialog() as dialog, ui.card().classes('w-full max-w-2xl'):
         if context:
             ui.label(context).classes('text-caption')
-        ui.html('Several ESOUI add-ons install a {folder} folder. Which one is {title} {version} by {author}?'
+        ui.html('Several ESOUI.com add-ons install a {folder} folder. Which one is {title} {version} by {author}?'
                 .format(folder=code(addon.dir), title=bold(addon.title), version=addon.version,
                         author=eso_colored(addon.author or '?')))
         spinner = ui.spinner('dots', size='lg')
@@ -527,7 +528,7 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
             link_html.on('click', lambda: webbrowser.open(picked_box['value'].metadata['link']))
 
             def show_link():
-                link_html.set_content('<a style="cursor:pointer">🔗 View it on ESOUI</a>')
+                link_html.set_content('<a style="cursor:pointer">🔗 View it on ESOUI.com</a>')
 
             def on_pick(e):
                 picked_box['value'] = ranked[e.value] if isinstance(e.value, int) else e.value
@@ -544,7 +545,7 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
                 refresh()
 
             confirm_btn = ui.button('✅ Confirm', on_click=confirm) \
-                .tooltip('Use the selected ESOUI listing for this folder')
+                .tooltip('Use the selected ESOUI.com listing for this folder')
             confirm_btn.set_enabled(picked_box['value'] is not addon.infos)
 
     ui.timer(0.01, load, once=True)
