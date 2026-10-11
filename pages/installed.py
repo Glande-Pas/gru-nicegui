@@ -3,6 +3,7 @@
 
 """Installed add-ons page."""
 
+import csv
 import io
 import warnings
 from collections import defaultdict
@@ -150,8 +151,14 @@ def installed_page():
         def export_list():
             out = io.StringIO()
             local.write_csv(out)
-            name = 'addons.csv' if state.target == 'live' else f'addons-{state.target}.csv'
-            ui.download(out.getvalue().encode(), name, 'text/csv')
+            suffix = {'libs': '-libs', 'addons': '-nolibs'}.get(filter_state['libs'], '')
+            if suffix:
+                libs = {a.dir for a in installed if a.parent is None and getattr(a, 'is_lib', False) is True}
+                rows = list(csv.reader(io.StringIO(out.getvalue())))
+                out = io.StringIO()
+                csv.writer(out).writerows(rows[:1] + [r for r in rows[1:] if (r[0] in libs) == (suffix == '-libs')])
+            base = 'addons' if state.target == 'live' else f'addons-{state.target}'
+            ui.download(out.getvalue().encode(), base + suffix + '.csv', 'text/csv')
 
         async def refresh_all():
             await refresh_api_async()
@@ -183,7 +190,10 @@ def installed_page():
                       .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))
                     ui.button('🔄 Refresh', on_click=refresh_all) \
                       .tooltip('Re-fetch the ESOUI.com add-on list and rescan the add-ons folder')
-                    ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons') \
+                    export_label = {'libs': '📤 Export libraries', 'addons': '📤 Export add-ons'}.get(
+                        filter_state['libs'], '📤 Export')
+                    ui.button(export_label, on_click=export_list) \
+                      .tooltip('Download the installed add-ons (per the Libraries/Add-ons toggle)') \
                       .set_enabled(bool(installed))
 
         summary_row()
@@ -208,6 +218,8 @@ def installed_page():
             def handler(e):
                 filter_state[key] = e.value or ('' if key == 'term' else 'all')
                 refresh_list()
+                if key == 'libs':
+                    summary_row.refresh()
             return handler
 
         toggle_props = ('no-caps dense color=toggle-bg text-color=toggle-fg '
