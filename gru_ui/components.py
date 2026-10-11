@@ -14,7 +14,7 @@ from nicegui import run, ui
 from gru.addon import AddonBundle, InstalledAddon, AddonInfo
 
 from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anchor_id, bold, code, \
-    installed_item, updated_item
+    installed_item, updated_item, hint
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
@@ -279,9 +279,14 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             rank = '🟢 active copy' if addon.version_rank == 'active' else '⚪ superseded copy'
             status = '{status}, {rank}'.format(status=status, rank=rank) if status else rank
 
+        status_parts = [status] if status else []
+        if isinstance(addon, AddonBundle):
+            status_parts.append(hint('📦 bundle', 'Not an add-on itself: a folder grouping several add-ons, '
+                                                  'downloaded as a single bundle. Updating or removing it affects '
+                                                  'all of them.'))
         status_span = (
-            f' <span style="display:inline-block; font-size:0.85em; font-weight:600; opacity:0.75">{status}</span>'
-            if status else ''
+            ' <span style="display:inline-block; font-size:0.85em; font-weight:600; opacity:0.75">'
+            + ', '.join(status_parts) + '</span>' if status_parts else ''
         )
         anchor = f' id="{anchor_id(addon.dir)}"' if is_installed and addon.parent is None else ''
         title_html = (

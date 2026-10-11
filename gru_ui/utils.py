@@ -108,6 +108,12 @@ def abbr(text: str, title: str) -> str:
     return '<abbr title="{title}">{text}</abbr>'.format(title=html.escape(title, quote=True), text=text)
 
 
+def hint(text: str, title: str) -> str:
+    """`text` as HTML with a hover explanation and a help cursor, for use as a placeholder value in a message."""
+    return '<span title="{title}" style="cursor:help">{text}</span>'.format(
+        title=html.escape(title, quote=True), text=text)
+
+
 def installed_item(title: str, version: str) -> str:
     return '{title} {version}'.format(title=bold(title), version=version)
 
