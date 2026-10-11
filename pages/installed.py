@@ -80,10 +80,6 @@ def installed_page():
     def body():
         installed = list(local.installed)
 
-        if not installed:
-            ui.label('No addons found in the configured directory.')
-            return
-
         ambiguous = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
         unmatched = [a for a in installed if a.parent is None and a.infos is None]
         unused = local.unused_deps(installed, opt=opt_deps())
@@ -187,7 +183,8 @@ def installed_page():
                       .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))
                     ui.button('🔄 Refresh', on_click=refresh_all) \
                       .tooltip('Re-fetch the ESOUI.com add-on list and rescan the add-ons folder')
-                    ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
+                    ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons') \
+                      .set_enabled(bool(installed))
 
         summary_row()
 
@@ -199,6 +196,10 @@ def installed_page():
         _warning_banner(ambiguous,
                         '{count} add-on(s) match several ESOUI.com add-ons — pick the right one on each card:')
         _warning_banner(not_found, "{count} add-on(s) weren't found on ESOUI.com and can't be updated:")
+
+        if not installed:
+            ui.label('No addons found in the configured directory.')
+            return
 
         def refresh_list():
             addon_list.refresh(filter_state['term'], filter_state['kind'], filter_state['libs'])
