@@ -39,6 +39,7 @@ class AppState:
     def __init__(self):
         locale.setlocale(locale.LC_ALL, '')
         self.config = load_config()
+        self.auto_update_claimed = False
         self.api = API.live(self.config)
         self.api_loaded = time.monotonic()
         self.candidates: dict[str, list] = {}  # dir -> ESOUI candidates, valid for the loaded API data
@@ -274,6 +275,13 @@ def patches_enabled() -> bool:
 def patch_updates() -> bool:
     """Whether a bulk update should re-apply each addon's saved patch afterwards."""
     return get_state().config.getboolean(f'{GAME}.addons', 'patch_updates')
+
+
+def claim_auto_update() -> bool:
+    """True only the first time it's asked in a launch, and only if the auto-update setting is on."""
+    state = get_state()
+    first, state.auto_update_claimed = not state.auto_update_claimed, True
+    return first and state.config.getboolean('app', 'auto_update', fallback=False)
 
 
 def search_results() -> int:

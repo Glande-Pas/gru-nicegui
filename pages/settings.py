@@ -92,6 +92,18 @@ def settings_page():
     _addons_directory('pts')
 
     ui.separator()
+    ui.label('Updates').classes('text-h6')
+
+    def on_auto_update_change(e):
+        config.set('app', 'auto_update', 'on' if e.value else 'off')
+        save_config(config)
+        ui.notify('Saved.', type='positive')
+
+    ui.switch('Update add-ons automatically on launch', value=config.getboolean('app', 'auto_update', fallback=False),
+              on_change=on_auto_update_change) \
+      .tooltip('Runs Update all once the installed list is shown. Add-ons matching several ESOUI.com listings are skipped')
+
+    ui.separator()
     ui.label('Search sort order').classes('text-h6')
     sort_options = {'downloads': 'Downloads', 'monthly': 'Monthly downloads', 'favorites': 'Favorites'}
     current_sort = config.get(f'{GAME}.addons', 'sortkey')

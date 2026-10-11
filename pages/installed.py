@@ -12,7 +12,7 @@ from nicegui import run, ui
 from gru_ui import shell
 from gru_ui.state import (get_state, rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary,
                           flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
-                          poll_ambiguous_resolution)
+                          poll_ambiguous_resolution, claim_auto_update)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
@@ -95,8 +95,8 @@ def installed_page():
                                'Close this dialog to skip it.').format(index=i, total=len(ambiguous))
                     await open_choose_match(addon, lambda: None, context)
 
-        async def update_all():
-            if ambiguous:
+        async def run_update(prompt: bool):
+            if prompt and ambiguous:
                 await offer_matching()
             before = {a.folder: (a.title, a.version) for a in local.installed}
             async with global_progress('Updating add-ons...') as pstate:
@@ -120,6 +120,9 @@ def installed_page():
             flash_summary('Installed', installed_now)
             flash_summary('Updated', updated)
             body.refresh()
+
+        async def update_all():
+            await run_update(prompt=True)
 
         async def install_missing():
             before = {a.dir for a in local.installed}
@@ -186,6 +189,10 @@ def installed_page():
                     ui.button('📤 Export', on_click=export_list).tooltip('Download the list of installed add-ons')
 
         summary_row()
+
+        # Once per launch, once the list is displayed; ambiguous add-ons are skipped, not prompted for
+        if claim_auto_update() and any(update_pending(a) for a in installed):
+            ui.timer(0.5, lambda: run_update(prompt=False), once=True)
 
         not_found = [a for a in unmatched if a not in ambiguous]
         _warning_banner(ambiguous,
