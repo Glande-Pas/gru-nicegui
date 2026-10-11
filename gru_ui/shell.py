@@ -67,8 +67,9 @@ a {
     border: 1px solid var(--q-badge-border);
     border-radius: 0.4rem;
 }
-/* QUploader hardcodes white header text in its own stylesheet -- no prop reaches it. */
-.q-uploader__header {
+/* QUploader hardcodes white header text in its own stylesheet -- no prop reaches it. Its buttons are <a>s,
+   so they must also beat the link color above. */
+.q-uploader__header, .q-uploader__header .q-btn {
     color: var(--q-button-fg) !important;
 }
 """

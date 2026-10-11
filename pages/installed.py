@@ -17,6 +17,7 @@ from gru_ui.state import (get_state, CARD_DETAILS, card_detail, set_card_detail,
                           rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary, flash_warnings,
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution, claim_auto_update, run_work)
+from gru_ui.import_dialog import open_import_dialog
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match, \
     reset_opened_cards
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
@@ -208,6 +209,8 @@ def installed_page():
                     ui.button(export_label, on_click=export_list) \
                       .tooltip('Download the installed add-ons (per the Libraries/Add-ons toggle)') \
                       .set_enabled(bool(installed))
+                    ui.button('📥 Import', on_click=lambda: open_import_dialog(api, local, body.refresh)) \
+                      .tooltip('Install the add-ons of an exported list')
 
         summary_row()
 
