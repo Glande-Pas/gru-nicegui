@@ -12,10 +12,12 @@ from collections import defaultdict
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, page_params, remember_params, rescan_async, refresh_api_async, opt_deps,
-                          patch_updates, flash_summary, flash_warnings, remove_vars_setting, logged_changes,
-                          update_pending, ambiguous_candidates, poll_ambiguous_resolution, claim_auto_update)
-from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
+from gru_ui.state import (get_state, CARD_DETAILS, card_detail, set_card_detail, page_params, remember_params,
+                          rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary, flash_warnings,
+                          remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
+                          poll_ambiguous_resolution, claim_auto_update)
+from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match, \
+    reset_opened_cards
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
 
@@ -231,6 +233,11 @@ def installed_page():
                     summary_row.refresh()
             return handler
 
+        def set_detail(e):
+            set_card_detail(e.value)
+            reset_opened_cards()
+            refresh_list()
+
         toggle_props = ('no-caps dense color=toggle-bg text-color=toggle-fg '
                         'toggle-color=primary toggle-text-color=button-fg')
         with ui.row().classes('w-full items-center no-wrap'):
@@ -240,6 +247,8 @@ def installed_page():
                       on_change=set_filter('kind')).props(toggle_props)
             ui.toggle({'all': 'Both', 'libs': 'Libraries', 'addons': 'Add-ons'}, value=filter_state['libs'],
                       on_change=set_filter('libs')).props(toggle_props)
+            ui.toggle(CARD_DETAILS, value=card_detail(), on_change=set_detail) \
+              .props(toggle_props).tooltip('How much each add-on card shows. Click a card title to open it fully.')
         ui.separator()
 
         @ui.refreshable

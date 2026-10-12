@@ -287,6 +287,22 @@ async def poll_ambiguous_resolution() -> bool:
     return True
 
 
+CARD_DETAILS = {'compact': 'Compact', 'standard': 'Standard', 'full': 'Full'}
+
+
+def card_detail() -> str:
+    """How much each add-on card shows: 'compact', 'standard' or 'full'."""
+    level = get_state().config.get('app', 'card_detail', fallback='standard')
+    return level if level in CARD_DETAILS else 'standard'
+
+
+def set_card_detail(level: str) -> None:
+    """Remember the card detail level across launches."""
+    config = get_state().config
+    config.set('app', 'card_detail', level)
+    save_config(config)
+
+
 def opt_deps() -> bool:
     return get_state().config.getboolean(f'{GAME}.addons', 'optional')
 

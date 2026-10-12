@@ -19,7 +19,7 @@ from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anch
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
-                    dependency_search_term)
+                    dependency_search_term, card_detail)
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -160,7 +160,7 @@ def _api_cell(addon, local) -> str | None:
     return hint(text, ', '.join(_api_label(local, v) for v in declared))
 
 
-def _metadata_rows(addon, api, local) -> list[tuple]:
+def _metadata_rows(addon, api, local, full: bool = True) -> list[tuple]:
     """Return (label, value, span) triples for display."""
     is_installed = isinstance(addon, InstalledAddon)
     is_embedded = is_installed and local is not None and addon.folder.parent != local.root
@@ -189,12 +189,12 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
     else:
         version_str = version
 
-    api_cell = _api_cell(addon, local) if is_installed and local is not None else None
+    api_cell = _api_cell(addon, local) if full and is_installed and local is not None else None
     if is_embedded:
         return [
             ('Author',    eso_colored(addon.author) if addon.author else '?', 3),
             ('Version',   version_str,                                         1),
-            ('Directory', addon.folder,                                        3 if api_cell else 4),
+            *([('Directory', addon.folder, 3 if api_cell else 4)] if full else []),
             *([('API', api_cell, 1)] if api_cell else []),
         ]
 
@@ -208,7 +208,7 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
         ('Updated',   date.strftime('%x') if date else '?',               1),
     ]
 
-    if is_installed:
+    if is_installed and full:
         rows.append(('Directory', addon.folder, 3 if api_cell else 4))
         if api_cell:
             rows.append(('API', api_cell, 1))
@@ -216,7 +216,7 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
     return rows
 
 
-def _render_meta_grid(addon, api, local):
+def _render_meta_grid(addon, api, local, full: bool = True):
     def value(val):
         if not isinstance(val, pathlib.Path):
             return f'<span>{val}</span>'
@@ -226,7 +226,7 @@ def _render_meta_grid(addon, api, local):
     cells = ''.join(
         f'<div class="gru-meta-cell" style="grid-column:span {span}">'
         f'<span class="gru-meta-lbl">{lbl}</span>{value(val)}</div>'
-        for lbl, val, span in _metadata_rows(addon, api, local)
+        for lbl, val, span in _metadata_rows(addon, api, local, full)
     )
     ui.html(
         f'<div style="display:grid; grid-template-columns:repeat(4,1fr); width:100%;'
@@ -265,9 +265,9 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
             'Installed, update available: go to its card' if updatable else 'Installed: go to its card')
 
 
-def _render_dependencies(addon, local, dimmed: bool) -> None:
+def _render_dependencies(addon, local, dimmed: bool, with_optional: bool = True) -> None:
     for label, deps, optional in (('Requires', addon.deps, False), ('Works with', addon.optdeps, True)):
-        if not deps:
+        if not deps or (optional and not with_optional):
             continue
         with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
                 .style('font-size:0.85em'):
@@ -315,6 +315,14 @@ def _render_dependents(addon, local, dimmed: bool) -> None:
                     ui.html(f'<a href="#{anchor_id(top.dir)}">{name}</a>').tooltip(tip + ': go to its card')
 
 
+# Cards the user opened to full detail this session, whatever the card detail setting
+_OPENED: set = set()
+
+
+def reset_opened_cards() -> None:
+    _OPENED.clear()
+
+
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
                dimmed: bool = False, expanded: bool = False, on_lock_change=None):
     """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
@@ -323,6 +331,10 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
     @ui.refreshable
     def card():
         is_installed = isinstance(addon, InstalledAddon)
+        setting = card_detail()
+        key = (is_installed, addon.folder if is_installed else getattr(addon, 'id', None))
+        opened = key in _OPENED
+        level = 'full' if opened else setting
         has_id = getattr(addon, 'id', None) is not None
         can_update = update_pending(addon) if has_id and is_installed else False
         is_locked = is_installed and addon.locked
@@ -427,16 +439,25 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             + ', '.join(status_parts) + '</span>' if status_parts else ''
         )
         anchor = f' id="{anchor_id(addon.dir)}"' if is_installed and addon.parent is None else ''
+        collapsible = is_installed and setting != 'full'
+        chevron = ('<span style="display:inline-block; width:1em; opacity:0.6">{mark}</span>'.format(
+            mark='▾' if opened else '▸') if collapsible else '')
         title_html = (
             f'<div{anchor} class="gru-card-title">'
-            f'  <span style="display:inline-block; font-size:1.25em; font-weight:600">{title}</span>'
+            f'  {chevron}<span style="display:inline-block; font-size:1.25em; font-weight:600">{title}</span>'
             f'  {status_span}'
             f'</div>'
         )
 
+        def toggle_opened():
+            _OPENED.symmetric_difference_update({key})
+            card.refresh()
+
         with ui.card().classes('w-full gap-2'):
             dim = ' opacity-50' if dimmed else ''
-            ui.html(title_html).classes(dim)
+            title_box = ui.html(title_html).classes(dim)
+            if collapsible:
+                title_box.classes('cursor-pointer').on('click', toggle_opened)
 
             with ui.row().classes('w-full items-start no-wrap gap-4' + dim):
                 if not is_embedded:
@@ -447,7 +468,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         ui.image(icon_url).classes('w-10 h-10 shrink-0')
 
                 with ui.column().classes('flex-grow gap-1 min-w-0'):
-                    _render_meta_grid(addon, api, local)
+                    _render_meta_grid(addon, api, local, full=level == 'full')
 
                 if not is_embedded:
                     with ui.column().classes('items-end shrink-0'):
@@ -462,8 +483,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                     'so it can\'t be updated.">⚠️ Not found on ESOUI.com</span>')
 
             if is_installed and local is not None:
-                _render_dependencies(addon, local, dimmed)
-                _render_dependents(addon, local, dimmed)
+                if level != 'compact':
+                    _render_dependencies(addon, local, dimmed, with_optional=level == 'full')
+                    _render_dependents(addon, local, dimmed)
 
             with ui.row().classes('w-full justify-end gap-1' + dim):
                 if not is_installed and has_id:

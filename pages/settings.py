@@ -10,7 +10,7 @@ from nicegui import app, ui
 
 from gru.config import root_key, save_config
 from gru_ui import shell
-from gru_ui.state import get_state, set_addons_root, GAME, flash_info
+from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail
 from gru_ui.utils import open_folder
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
@@ -102,6 +102,18 @@ def settings_page():
     ui.switch('Update add-ons automatically on launch', value=config.getboolean('app', 'auto_update', fallback=False),
               on_change=on_auto_update_change) \
       .tooltip('Runs Update all once the installed list is shown. Add-ons matching several ESOUI.com listings are skipped')
+
+    ui.separator()
+    ui.label('Add-on cards').classes('text-h6')
+
+    def on_detail_change(e):
+        set_card_detail(e.value)
+        ui.notify('Saved.', type='positive')
+
+    ui.select(CARD_DETAILS, value=card_detail(), label='Detail level', on_change=on_detail_change) \
+      .tooltip('Compact hides the dependency lines and the directory and API version. Standard shows what '
+               'an add-on requires and, for libraries, what uses them. Full also shows optional dependencies, '
+               'the directory and the API version. Also available on the Installed Add-Ons page.')
 
     ui.separator()
     ui.label('Search sort order').classes('text-h6')
