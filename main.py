@@ -5,6 +5,7 @@
 """Entry point: registers every page and starts the NiceGUI server."""
 
 import importlib.resources
+import signal
 
 from nicegui import app, ui
 
@@ -35,8 +36,13 @@ def run():
     theme = initial_theme()
     # Window background shown until the page loads
     app.native.window_args['background_color'] = theme['page_bg']
-    ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=theme['dark'], reload=False,
-           native=True, window_size=(1400, 900), reconnect_timeout=10)
+    # Ignored here, the window process inherits it: Ctrl+C is handled by the server in this process only
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=theme['dark'], reload=False,
+               native=True, window_size=(1400, 900), reconnect_timeout=10)
+    except KeyboardInterrupt:
+        pass  # Ctrl+C in the terminal: exit quietly
 
 
 if __name__ in {'__main__', '__mp_main__'}:
