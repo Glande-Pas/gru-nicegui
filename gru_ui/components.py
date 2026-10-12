@@ -237,13 +237,22 @@ def _render_meta_grid(addon, api, local, full: bool = True):
         ' const a = e.target.closest("[data-path]"); if (a) emit(a.dataset.path); }')
 
 
+def _installed_copy(dep, local):
+    """Any installed copy of a dependency's folder, whatever its version."""
+    return next((a for a in local.dir(dep.dir) if not isinstance(a, AddonBundle)), None)
+
+
 def _dependency_link(dep, addon, local, optional: bool) -> None:
     """One dependency: linked to its card on Installed Add-Ons if installed, else to a search for it.
     The game ignores versions of optional dependencies, so any installed copy counts for those. """
+    too_old = False
     if optional:
-        found = next((a for a in local.dir(dep.dir) if not isinstance(a, AddonBundle)), None)
+        found = _installed_copy(dep, local)
     else:
         found = local.find_installed(dep)
+        if found is None:
+            found = _installed_copy(dep, local)
+            too_old = found is not None
     if found is None:
         ui.html(f'<a style="cursor:pointer">{"➕" if optional else "❌"} {dep.dir}</a>').on(
             'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip(
@@ -256,13 +265,16 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
     while own_top.parent is not None:
         own_top = own_top.parent
     updatable = update_pending(found)
-    mark = '🔄' if updatable else '✅'
+    mark = '⚠️' if too_old else '🔄' if updatable else '✅'
     if top is own_top:
-        ui.html(f'<span>{mark} {dep.dir}</span>').tooltip(
-            'Bundled with this add-on, update available' if updatable else 'Bundled with this add-on')
+        tip = ('Bundled with this add-on, but older than required' if too_old else
+               'Bundled with this add-on, update available' if updatable else 'Bundled with this add-on')
+        ui.html(f'<span>{mark} {dep.dir}</span>').tooltip(tip)
     else:
-        ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>').tooltip(
-            'Installed, update available: go to its card' if updatable else 'Installed: go to its card')
+        tip = (('Installed, but older than required, update available: go to its card' if updatable else
+                'Installed, but older than required: go to its card') if too_old else
+               'Installed, update available: go to its card' if updatable else 'Installed: go to its card')
+        ui.html(f'<a href="#{anchor_id(top.dir)}">{mark} {dep.dir}</a>').tooltip(tip)
 
 
 def _render_dependencies(addon, local, dimmed: bool, with_optional: bool = True) -> None:
@@ -361,8 +373,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                 installed_top = installed_top.parent
         locked_copy = any(a.locked for a in installed_copies + ambiguous_copies)
 
-        has_missing = (is_installed and not is_embedded and local is not None and
-                       bool(local.missing_deps([addon])))
+        missing = local.missing_deps([addon]) if is_installed and not is_embedded and local is not None else []
+        has_missing = bool(missing)
+        only_outdated = has_missing and all(_installed_copy(dep, local) is not None for dep in missing)
 
         # Title badges as (text, explanation).
         locked_badge = ('🔒 Version locked', 'Kept at current version: updates ignored until unlocked.')
@@ -404,7 +417,11 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
         badges = []
         if is_installed and has_missing:
-            tip = 'Some add-ons needed by this add-on are not installed, so it will not load in game.'
+            if only_outdated:
+                tip = 'Some add-ons needed by this add-on are installed in an older version than it requires, ' \
+                      'so it will not load in game.'
+            else:
+                tip = 'Some add-ons needed by this add-on are not installed, so it will not load in game.'
             if disabled is not None and disabled.everywhere:
                 tip += ' It is currently disabled in game, so this only matters once it is enabled.'
             badges.append(('❌ Missing dependencies', tip))
@@ -432,7 +449,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             badges.append(('📦 bundle', 'Not an add-on itself, but a folder grouping several add-ons, downloaded as a '
                                         'single bundle. Updating or removing it affects all bundled addons.'))
         elif is_installed and is_lib and unused:
-            badges.append(('⚠️ Unused library',
+            badges.append(('🧹 Unused library',
                            'A library, which provides code for other add-ons. No installed add-on depends on it, '
                            'so it can safely be removed.'))
         elif is_installed and is_lib:
@@ -485,7 +502,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                 external_link('🔗 {title}'.format(title=eso_colored(c.title)), c.metadata['link'])
                         else:
                             ui.html('<span class="gru-badge-warn" title="No ESOUI.com add-on uses this folder name, '
-                                    'so it can\'t be updated.">⚠️ Not found on ESOUI.com</span>')
+                                    'so it can\'t be updated.">❔ Not found on ESOUI.com</span>')
                         if installed_top is not None:
                             ui.html('<a style="cursor:pointer;font-size:0.85em">📦 Installed Add-Ons</a>').on(
                                 'click', lambda: show_installed_card(anchor_id(installed_top.dir))) \

@@ -195,7 +195,8 @@ def installed_page():
                       .tooltip('Update every add-on with a newer ESOUI.com version (locked ones are skipped), '
                                'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
                     ui.button('⬇️ Install missing', on_click=install_missing) \
-                      .tooltip('Install dependencies that installed add-ons require but are not present.') \
+                      .tooltip('Install or update dependencies that installed add-ons need '
+                               'but are missing or too old.') \
                       .set_enabled(bool(missing_now))
                     ui.button('🧹 Remove unused', on_click=remove_unused) \
                       .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))

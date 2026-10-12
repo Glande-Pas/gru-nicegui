@@ -40,8 +40,8 @@ THEMES = {
         'header_toggle_bg': 'rgba(255,255,255,0.14)',
         'header_fg': '#ffffff',
         'button_fg': '#1a1a1a',
-        'badge_bg': 'rgba(255,171,0,0.15)',
-        'badge_border': 'rgba(255,171,0,0.4)',
+        'badge_bg': 'rgba(255,171,0,0.3)',
+        'badge_border': 'rgba(255,171,0,0.6)',
     },
 }
 
