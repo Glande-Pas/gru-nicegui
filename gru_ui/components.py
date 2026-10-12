@@ -221,6 +221,42 @@ def _render_dependencies(addon, local, dimmed: bool) -> None:
                 _dependency_link(dep, addon, local, optional)
 
 
+def _render_dependents(addon, local, dimmed: bool) -> None:
+    """For a library: the installed add-ons that depend on it, or a red cross when none does."""
+    if getattr(addon, 'is_lib', False) is not True:
+        return
+    required, optional = [], []
+    for other in local.installed:
+        if other is addon:
+            continue
+        if any(dep.dir == addon.dir for dep in other.deps):
+            required.append(other)
+        elif any(dep.dir == addon.dir for dep in other.optdeps):
+            optional.append(other)
+    own_top = addon
+    while own_top.parent is not None:
+        own_top = own_top.parent
+    with ui.row().classes('w-full items-baseline gap-x-2 gap-y-0' + (' opacity-50' if dimmed else '')) \
+            .style('font-size:0.85em'):
+        ui.html('<span class="gru-meta-lbl">Used by</span>').tooltip(
+            'The installed add-ons that depend on this library')
+        if not required and not optional:
+            ui.html('<span>❌ None</span>').tooltip('No installed add-on uses this library: it can be removed')
+            return
+        groups = ((required, '', 'Needs this library'), (optional, ' (optional)', 'Optionally uses this library'))
+        for others, mark, tip in groups:
+            for other in sorted(others, key=lambda a: (a.title or a.dir).lower()):
+                top = other
+                while top.parent is not None:
+                    top = top.parent
+                name = '🧩 {name}{mark}'.format(name=html.escape(strip_eso_colors(other.title or other.dir)),
+                                               mark=mark)
+                if top is own_top:
+                    ui.html(f'<span>{name}</span>').tooltip(tip + ', bundled with it')
+                else:
+                    ui.html(f'<a href="#{anchor_id(top.dir)}">{name}</a>').tooltip(tip + ': go to its card')
+
+
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
                dimmed: bool = False, expanded: bool = False, on_lock_change=None):
     """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
@@ -254,9 +290,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                        bool(local.missing_deps([addon])))
 
         status = ''
-        if is_installed and has_missing:
-            status = '❌ Missing dependencies'
-        elif candidates:
+        if candidates:
             status = ('❓ Matches {count} ESOUI.com add-ons, 🔒 version locked' if is_locked else
                       '❓ Matches {count} ESOUI.com add-ons').format(count=len(candidates))
         elif is_installed and can_update and addon.parent is not None:
@@ -266,14 +300,17 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
         elif is_locked:
             status = ('🔒 Version locked, update available' if addon.can_update and not update_moot(addon) else
                       '🔒 Version locked')
-        elif is_installed and unused:
-            status = '⚠️ Unused library'
         elif ambiguous_copies:
             status = '❓ Possibly installed, 🔒 version locked' if locked_copy else '❓ Possibly installed'
         elif locked_copy:
             status = '✅ Installed, 🔒 version locked'
         elif already_installed:
             status = '✅ Installed'
+
+        # Independent facts add up; only the version states above compete with each other
+        parts = [('❌ Missing dependencies' if is_installed and has_missing else ''), status,
+                 ('⚠️ Unused library' if is_installed and unused else '')]
+        status = ', '.join(part for part in parts if part)
 
         if is_installed and addon.infos is not None and len(addon.infos.folders) > 1 and addon.version_rank:
             rank = '🟢 active copy' if addon.version_rank == 'active' else '⚪ superseded copy'
@@ -325,6 +362,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
             if is_installed and local is not None:
                 _render_dependencies(addon, local, dimmed)
+                _render_dependents(addon, local, dimmed)
 
             with ui.row().classes('w-full justify-end gap-1' + dim):
                 if not is_installed and has_id:
