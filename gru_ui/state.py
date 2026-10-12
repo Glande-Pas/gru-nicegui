@@ -333,6 +333,22 @@ def patch_updates() -> bool:
     return get_state().config.getboolean(f'{GAME}.addons', 'patch_updates')
 
 
+def update_by_date() -> bool:
+    """Whether an add-on with its listing's version is outdated when the listing is newer than the install."""
+    return get_state().config.getboolean(f'{GAME}.addons', 'update_by_date', fallback=True)
+
+
+def set_update_by_date(value: bool) -> None:
+    """Save the option and apply it to the already scanned add-ons."""
+    state = get_state()
+    state.config.set(f'{GAME}.addons', 'update_by_date', 'on' if value else 'off')
+    save_config(state.config)
+    if state.local is not None:
+        state.local.update_by_date = value
+        for addon in state.local.installed:
+            addon.update_by_date = value
+
+
 def claim_auto_update() -> bool:
     """True only the first time it's asked in a launch, and only if the auto-update setting is on."""
     state = get_state()

@@ -10,7 +10,8 @@ from nicegui import app, ui
 
 from gru.config import root_key, save_config
 from gru_ui import shell
-from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail
+from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail, \
+    update_by_date, set_update_by_date
 from gru_ui.utils import open_folder
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
@@ -102,6 +103,17 @@ def settings_page():
     ui.switch('Update add-ons automatically on launch', value=config.getboolean('app', 'auto_update', fallback=False),
               on_change=on_auto_update_change) \
       .tooltip('Runs Update all once the installed list is shown. Add-ons matching several ESOUI.com listings are skipped')
+
+    def on_by_date_change(e):
+        set_update_by_date(e.value)
+        ui.notify('Saved.', type='positive')
+        ui.navigate.reload()
+
+    ui.switch('Detect same-version updates', value=update_by_date(), on_change=on_by_date_change)
+    ui.label('Some add-ons have been found to reuse the same visible version number across successive uploads. '
+             'When the versions match, this option checks the installation date to detect that and offer the update. '
+             'Turn it off if you get spurious updates due to other programs changing the file modification dates.'
+             ).classes('text-caption')
 
     ui.separator()
     ui.label('Add-on cards').classes('text-h6')
