@@ -19,7 +19,7 @@ from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anch
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
-                    dependency_search_term, card_detail)
+                    dependency_search_term, card_detail, run_work)
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -577,7 +577,7 @@ async def _do_remove(addon: InstalledAddon, local, remove_vars: bool = False):
         return caught
 
     async with global_progress('Removing {title}...'.format(title=title)):
-        caught = await run.io_bound(work)
+        caught = await run_work(work, 'Failed to remove {title}'.format(title=bold(title)))
         await rescan_async()
     flash_warnings(caught)
     flash_info('Removed: {title}'.format(title=bold(title)))
@@ -614,7 +614,7 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
                 local.install_deps(installed, api, opt=opt_deps(), progress=progress)
             return caught
 
-        caught = await run.io_bound(work)
+        caught = await run_work(work, 'Failed to install {title}'.format(title=bold(addon.title)))
     flash_warnings(caught)
     await rescan_async()
     flash_summary('Installed', [installed_item(a.title or a.dir, a.version)
@@ -646,7 +646,7 @@ async def _run_update(addon: InstalledAddon, api, local, refresh):
                 local.install_deps(updated, api, opt=opt_deps(), progress=progress)
             return caught
 
-        caught = await run.io_bound(work)
+        caught = await run_work(work, 'Failed to update {title}'.format(title=bold(addon.title)))
     flash_warnings(caught)
     await rescan_async()
     after = {a.folder: (a.title, a.version) for a in local.installed}

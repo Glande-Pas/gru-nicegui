@@ -9,13 +9,13 @@ import json
 import warnings
 from collections import defaultdict
 
-from nicegui import run, ui
+from nicegui import ui
 
 from gru_ui import shell
 from gru_ui.state import (get_state, CARD_DETAILS, card_detail, set_card_detail, page_params, remember_params,
                           rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary, flash_warnings,
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
-                          poll_ambiguous_resolution, claim_auto_update)
+                          poll_ambiguous_resolution, claim_auto_update, run_work)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match, \
     reset_opened_cards
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
@@ -30,7 +30,7 @@ async def _do_remove_unused(local, remove_vars):
         return caught
 
     async with global_progress('Removing unused add-ons...'):
-        caught = await run.io_bound(work)
+        caught = await run_work(work, 'Failed to remove unused add-ons')
         await rescan_async()
     flash_warnings(caught)
     after = {a.dir for a in local.installed}
@@ -114,7 +114,7 @@ def installed_page():
                         local.update(api, opt=opt_deps(), deps=True, patch=patch_updates(), progress=progress)
                     return caught
 
-                caught = await run.io_bound(work)
+                caught = await run_work(work, 'Failed to update add-ons')
             flash_warnings(caught)
             await rescan_async()
             after = {a.folder: (a.title, a.version) for a in local.installed}
@@ -141,7 +141,7 @@ def installed_page():
                         local.install_deps(installed, api, opt=opt_deps(), progress=progress)
                     return caught
 
-                caught = await run.io_bound(work)
+                caught = await run_work(work, 'Failed to install missing dependencies')
             flash_warnings(caught)
             await rescan_async()
             flash_summary('Installed', [installed_item(a.title or a.dir, a.version)

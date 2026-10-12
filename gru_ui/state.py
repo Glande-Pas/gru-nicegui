@@ -116,6 +116,15 @@ def flash_summary(heading: str, items: list[str], flash=flash_info):
               + '<br/>'.join(f'• {item}' for item in items))
 
 
+async def run_work(work, failure: str) -> list:
+    """Run a worker returning caught warnings; on failure, notify with `failure` and the error, and return []."""
+    try:
+        return await run.io_bound(work)
+    except Exception as exc:
+        flash_warning('{failure}: {error}'.format(failure=failure, error=html.escape(str(exc))))
+        return []
+
+
 def flash_warnings(caught):
     """Merge the warnings recorded by warnings.catch_warnings() into a single notification."""
     flash_summary('Warnings', list(dict.fromkeys(str(w.message) for w in caught)), flash_warning)
