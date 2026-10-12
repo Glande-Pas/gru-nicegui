@@ -388,7 +388,7 @@ def diff_addon_patch(addon, api, local) -> tuple[int, str, list[str]]:
 
     Does no UI work, so it is safe to run in a worker thread; raises on failure."""
     out = io.StringIO()
-    with local.unmodified_addon(addon.infos, addon.dir, api) as ref_addon:
+    with local.unmodified_addon(addon.infos, addon.dir, api, relpath=addon.folder.relative_to(local.root)) as ref_addon:
         with warnings.catch_warnings(record=True, category=UserWarning) as caught:
             n = gru_patch.addon_diff(addon, ref_addon, out)
     return n, out.getvalue(), [str(w.message) for w in caught]
