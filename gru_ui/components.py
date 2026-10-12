@@ -249,8 +249,9 @@ def _render_dependents(addon, local, dimmed: bool) -> None:
                 top = other
                 while top.parent is not None:
                     top = top.parent
-                name = '🧩 {name}{mark}'.format(name=html.escape(strip_eso_colors(other.title or other.dir)),
-                                               mark=mark)
+                name = '{icon} {name}{mark}'.format(
+                    icon='📗' if getattr(other, 'is_lib', False) is True else '🧩',
+                    name=html.escape(strip_eso_colors(other.title or other.dir)), mark=mark)
                 if top is own_top:
                     ui.html(f'<span>{name}</span>').tooltip(tip + ', bundled with it')
                 else:
@@ -289,38 +290,66 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
         has_missing = (is_installed and not is_embedded and local is not None and
                        bool(local.missing_deps([addon])))
 
-        status = ''
+        # Title badges as (text, explanation).
+        locked_badge = ('🔒 Version locked', 'Kept at current version: updates ignored until unlocked.')
+        version_badges = []
         if candidates:
-            status = ('❓ Matches {count} ESOUI.com add-ons, 🔒 version locked' if is_locked else
-                      '❓ Matches {count} ESOUI.com add-ons').format(count=len(candidates))
+            version_badges.append((
+                '❓ Matches {count} ESOUI.com add-ons'.format(count=len(candidates)),
+                'Several ESOUI.com add-ons install this folder name and gru cannot tell which one this is, '
+                'so updates cannot be detected. Pick the right one with "Match ESOUI.com listing".'))
+            if is_locked:
+                version_badges.append(locked_badge)
         elif is_installed and can_update and addon.parent is not None:
-            status = '🔄 Update available as a standalone library'
+            version_badges.append((
+                '🔄 Update available as a standalone library',
+                'This library is bundled inside another add-on. '
+                'A newer version exists on ESOUI.com as its own download.'))
         elif is_installed and can_update:
-            status = '🔄 Update available'
+            version_badges.append(('🔄 Update available', 'A newer version is available on ESOUI.com.'))
         elif is_locked:
-            status = ('🔒 Version locked, update available' if addon.can_update and not update_moot(addon) else
-                      '🔒 Version locked')
+            version_badges.append(locked_badge)
+            if addon.can_update and not update_moot(addon):
+                version_badges.append((
+                    '🔄 Update available',
+                    'A newer version exists on ESOUI.com, but it will not be installed while the version is locked.'))
         elif ambiguous_copies:
-            status = '❓ Possibly installed, 🔒 version locked' if locked_copy else '❓ Possibly installed'
-        elif locked_copy:
-            status = '✅ Installed, 🔒 version locked'
+            version_badges.append((
+                '❓ Possibly installed',
+                "An installed folder has this add-on's folder name but is not matched to this ESOUI.com listing, "
+                'so it may be this add-on, or another with the same folder name.'))
+            if locked_copy:
+                version_badges.append(locked_badge)
         elif already_installed:
-            status = '✅ Installed'
+            version_badges.append(('✅ Installed', 'This add-on is installed.'))
+            if locked_copy:
+                version_badges.append(locked_badge)
 
-        # Independent facts add up; only the version states above compete with each other
-        parts = [('❌ Missing dependencies' if is_installed and has_missing else ''), status,
-                 ('⚠️ Unused library' if is_installed and unused else '')]
-        status = ', '.join(part for part in parts if part)
-
+        badges = []
+        if is_installed and has_missing:
+            badges.append(('❌ Missing dependencies',
+                           'Some add-ons needed by this add-on are not installed, so it will not load in game.'))
+        badges.extend(version_badges)
         if is_installed and addon.infos is not None and len(addon.infos.folders) > 1 and addon.version_rank:
-            rank = '🟢 active copy' if addon.version_rank == 'active' else '⚪ superseded copy'
-            status = '{status}, {rank}'.format(status=status, rank=rank) if status else rank
-
-        status_parts = [status] if status else []
+            if addon.version_rank == 'active':
+                badges.append(('🟢 active copy',
+                               'Several copies of this add-on are installed. '
+                               'This one has the newest version, so will be the one loaded in game.'))
+            else:
+                badges.append(('⚪ superseded copy',
+                               'Several copies of this add-on are installed. '
+                               'A newer copy exists, so this one is not loaded in game.'))
         if isinstance(addon, AddonBundle):
-            status_parts.append(hint('📦 bundle', 'Not an add-on itself: a folder grouping several add-ons, '
-                                                  'downloaded as a single bundle. Updating or removing it affects '
-                                                  'all of them.'))
+            badges.append(('📦 bundle', 'Not an add-on itself, but a folder grouping several add-ons, downloaded as a '
+                                        'single bundle. Updating or removing it affects all bundled addons.'))
+        elif is_installed and is_lib and unused:
+            badges.append(('⚠️ Unused library',
+                           'A library, which provides code for other add-ons. No installed add-on depends on it, '
+                           'so it can safely be removed.'))
+        elif is_installed and is_lib:
+            badges.append(('📗 Library', 'Provides code for other add-ons. '
+                                         'See "Used by" for which ones require this library.'))
+        status_parts = [hint(text, tip) for text, tip in badges]
         status_span = (
             ' <span style="display:inline-block; font-size:0.85em; font-weight:600; opacity:0.75">'
             + ', '.join(status_parts) + '</span>' if status_parts else ''
