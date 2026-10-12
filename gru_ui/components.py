@@ -247,8 +247,8 @@ def _dependency_link(dep, addon, local, optional: bool) -> None:
     if found is None:
         ui.html(f'<a style="cursor:pointer">{"➕" if optional else "❌"} {dep.dir}</a>').on(
             'click', lambda: search_for(dependency_search_term(dep.dir))).tooltip(
-                'Not installed, but optional: search ESOUI.com for it' if optional else
-                'Missing, and needed: search ESOUI.com for it')
+                'Not installed, but optional: search online for it' if optional else
+                'Missing, and needed: search online for it')
         return
     top, own_top = found, addon
     while top.parent is not None:

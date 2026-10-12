@@ -19,7 +19,7 @@ BUILTIN_COLORS = {'primary', 'secondary', 'warning'}  # Quasar already has class
 
 _PAGES = [
     ('/', '📦', 'Installed Add-Ons'),
-    ('/search', '🔍', 'Search'),
+    ('/search', '🔍', 'Search online'),
     ('/patches', '📝', 'Patches'),
     ('/settings', '⚙️', 'Settings'),
     ('/changes', '🕓', 'Recent Changes'),

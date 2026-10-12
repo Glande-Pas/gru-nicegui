@@ -16,7 +16,7 @@ async def search_page():
     api = state.api
     local = state.local
 
-    ui.label('Search').classes('text-h4')
+    ui.label('Search online').classes('text-h4')
 
     if local is None:
         ui.label('No addons directory configured. Go to Settings to set it up.').classes('text-warning')
