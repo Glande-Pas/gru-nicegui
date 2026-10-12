@@ -5,15 +5,16 @@
 
 import csv
 import io
+import json
 import warnings
 from collections import defaultdict
 
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import (get_state, rescan_async, refresh_api_async, opt_deps, patch_updates, flash_summary,
-                          flash_warnings, remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
-                          poll_ambiguous_resolution, claim_auto_update)
+from gru_ui.state import (get_state, page_params, remember_params, rescan_async, refresh_api_async, opt_deps,
+                          patch_updates, flash_summary, flash_warnings, remove_vars_setting, logged_changes,
+                          update_pending, ambiguous_candidates, poll_ambiguous_resolution, claim_auto_update)
 from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
@@ -75,7 +76,14 @@ def installed_page():
         ui.label('No addons directory configured. Go to Settings to set it up.').classes('text-warning')
         return
 
-    filter_state = {'term': '', 'kind': 'all', 'libs': 'all'}
+    params = page_params()
+    filter_state = {'term': params.get('q', ''),
+                    'kind': params.get('kind') if params.get('kind') in ('outdated', 'unused') else 'all',
+                    'libs': params.get('libs') if params.get('libs') in ('libs', 'addons') else 'all'}
+
+    def remember_filters():
+        remember_params('/', {'q': filter_state['term'],
+                              **{key: filter_state[key] for key in ('kind', 'libs') if filter_state[key] != 'all'}})
 
     @ui.refreshable
     def body():
@@ -218,6 +226,7 @@ def installed_page():
             def handler(e):
                 filter_state[key] = e.value or ('' if key == 'term' else 'all')
                 refresh_list()
+                remember_filters()
                 if key == 'libs':
                     summary_row.refresh()
             return handler
@@ -313,6 +322,31 @@ def installed_page():
         addon_list(filter_state['term'], filter_state['kind'], filter_state['libs'])
 
     body()
+
+    async def goto_card(e):
+        """A link to a card the filters hide: clear them (as a new history entry), then scroll to it."""
+        if filter_state['term'] or filter_state['kind'] != 'all' or filter_state['libs'] != 'all':
+            filter_state.update(term='', kind='all', libs='all')
+            remember_params('/', {}, push=True)
+            body.refresh()
+        ui.run_javascript('setTimeout(() => document.getElementById({id})?.scrollIntoView({{behavior: "smooth"}}),'
+                          ' 100);'.format(id=json.dumps(e.args)))
+
+    ui.on('gru_goto_card', goto_card)
+    ui.run_javascript('''
+        if (!window.gruGotoCard) {
+            window.gruGotoCard = true;
+            document.addEventListener("click", (e) => {
+                const a = e.target.closest('a[href^="#"]');
+                const id = a && decodeURIComponent(a.getAttribute("href").slice(1));
+                if (id && !document.getElementById(id)) {
+                    e.preventDefault();
+                    emitEvent("gru_goto_card", id);
+                }
+            }, true);
+        }
+    ''')
+
     async def poll():
         if await poll_ambiguous_resolution():
             body.refresh()

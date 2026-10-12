@@ -6,7 +6,7 @@
 from nicegui import run, ui
 
 from gru_ui import shell
-from gru_ui.state import get_state, sortkey, search_results, poll_ambiguous_resolution
+from gru_ui.state import get_state, page_params, remember_params, sortkey, search_results, poll_ambiguous_resolution
 from gru_ui.components import addon_card
 
 
@@ -54,11 +54,14 @@ async def search_page():
         for addon in found:
             addon_card(addon, api, local, lambda: results.refresh(term))
 
-    search_state = {'term': state.pending_search}
+    search_state = {'term': state.pending_search or page_params().get('q', '')}
     state.pending_search = ''
+    if search_state['term']:  # after NiceGUI's own history push for this navigation, which sees the URL as already set
+        ui.timer(0.3, lambda: remember_params('/search', {'q': search_state['term']}), once=True)
 
     def on_search(e):
         search_state['term'] = e.value or ''
+        remember_params('/search', {'q': search_state['term']})
         results.refresh(search_state['term'])
 
     ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \

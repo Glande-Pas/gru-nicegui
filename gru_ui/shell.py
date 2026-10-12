@@ -124,6 +124,17 @@ def root():
                                f'.bg-{name} {{ background-color: var(--q-{name}) !important; }}'
                                for name in names.values() if name not in BUILTIN_COLORS) + '</style>')
     ui.dark_mode(theme['dark'])
+    # Guarantee sane back/forward keys
+    ui.add_head_html('''<script>
+        document.addEventListener("keydown", (e) => {
+            const back = (e.altKey && e.key === "ArrowLeft") || (e.metaKey && e.key === "[");
+            const forward = (e.altKey && e.key === "ArrowRight") || (e.metaKey && e.key === "]");
+            if (back || forward) {
+                e.preventDefault();
+                back ? history.back() : history.forward();
+            }
+        });
+    </script>''')
 
     # The header stays denim regardless of theme, so its text must stay light regardless too.
     with ui.header().classes('items-center justify-between bg-secondary text-header-fg'):

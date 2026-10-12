@@ -9,11 +9,13 @@ import contextlib
 import functools
 import html
 import io
+import json
 import locale
 import pathlib
 import threading
 import time
 import warnings
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from nicegui import run, ui
 
@@ -163,6 +165,21 @@ def _flash_refresh_error(error: str | None):
     if error:
         flash_warning('Could not refresh ESOUI.com data, keeping the previous data: {error}'.format(
             error=html.escape(error)))
+
+
+def page_params() -> dict[str, str]:
+    """The query parameters of the page being built, from the URL the browser history restored."""
+    path = ui.context.client.sub_pages_router.current_path
+    return dict(parse_qsl(urlsplit(path).query))
+
+
+def remember_params(path: str, params: dict[str, str], push: bool = False) -> None:
+    """Keep non-empty `params` in the page's URL, so going back to the page restores them. Replaces the current
+    history entry, or adds a new one if `push`."""
+    query = urlencode({key: value for key, value in params.items() if value})
+    url = path + ('?' + query if query else '')
+    ui.run_javascript('history.{method}({{page: {url}}}, "", (window.path_prefix || "") + {url});'.format(
+        method='pushState' if push else 'replaceState', url=json.dumps(url)))
 
 
 def search_for(term: str):
