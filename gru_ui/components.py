@@ -6,6 +6,7 @@
 import contextlib
 import html
 import pathlib
+import re
 import warnings
 import webbrowser
 
@@ -107,6 +108,58 @@ def _bold_diff_suffix(current: str, upstream: str) -> str:
     return upstream[:common] + f'<b>{upstream[common:]}</b>'
 
 
+def _api_label(local, version: int) -> str:
+    """An API version number, with the game update it belongs to when known."""
+    name = local.api_versions.name(version) if local is not None and local.api_versions else None
+    return '{version} ({name})'.format(version=version, name=name) if name else str(version)
+
+
+def _api_short(local, version: int) -> str:
+    """"Season One (U51)": the update's name and number, just the name for "Update 44" and the number if unnamed."""
+    name = local.api_versions.name(version) if local is not None and local.api_versions else None
+    if not name:
+        return str(version)
+    if re.fullmatch(r'Update \d+', name):
+        return name
+    return '{name} (U{number})'.format(name=name, number=version % 100)
+
+
+def _api_info(addon, local) -> tuple[list[int], str | None, int | None]:
+    """The API versions an installed add-on declares, how they compare to the game's ('newer', 'older' or None)
+    and the game's version."""
+    declared = sorted({v for member in getattr(addon, 'members', [addon]) for v in getattr(member, 'api', [])})
+    state = local.api_vs_game(addon) if local is not None else None
+    game = local.game_api_version() if local is not None else None
+    return declared, state, game
+
+
+def _api_closest(declared: list[int], game: int | None) -> int:
+    """The declared API version nearest the game's (the lower one on a tie), else the highest."""
+    return min(declared, key=lambda v: (abs(v - game), v)) if game is not None else max(declared)
+
+
+def _api_message(state: str, declared: list[int], game: int, local) -> str:
+    if state == 'newer':
+        return ('Written for game version {api}, newer than current {game}. It may use features not yet available in '
+                'this version of the game, for instance ones only on the PTS.').format(
+                    api=_api_label(local, _api_closest(declared, game)), game=_api_label(local, game))
+    return ('Written for game version {api}, older than current {game}. Will be marked "Obsolete" in game, '
+            'though there is usually nothing to worry about.') \
+                    .format(api=_api_label(local, _api_closest(declared, game)), game=_api_label(local, game))
+
+
+def _api_cell(addon, local) -> str | None:
+    """The API versions as a metadata value, marked with a tooltip when newer or older than the game's."""
+    declared, state, game = _api_info(addon, local)
+    if not declared:
+        return None
+    text = _api_short(local, _api_closest(declared, game))
+    if state is not None and game is not None:
+        marker = '🚧' if state == 'newer' else '🕰️'
+        return hint('{text} {marker}'.format(text=text, marker=marker), _api_message(state, declared, game, local))
+    return hint(text, ', '.join(_api_label(local, v) for v in declared))
+
+
 def _metadata_rows(addon, api, local) -> list[tuple]:
     """Return (label, value, span) triples for display."""
     is_installed = isinstance(addon, InstalledAddon)
@@ -136,25 +189,29 @@ def _metadata_rows(addon, api, local) -> list[tuple]:
     else:
         version_str = version
 
+    api_cell = _api_cell(addon, local) if is_installed and local is not None else None
     if is_embedded:
         return [
-            ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
-            ('Version',   version_str,                                         2),
-            ('Directory', addon.folder,                                        4),
+            ('Author',    eso_colored(addon.author) if addon.author else '?', 3),
+            ('Version',   version_str,                                         1),
+            ('Directory', addon.folder,                                        3 if api_cell else 4),
+            *([('API', api_cell, 1)] if api_cell else []),
         ]
 
     rows = [
         ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
-        ('Version',   version_str,                                         1),
-        ('Updated',   date.strftime('%x') if date else '?',               1),
-        ('Category',  _category_label(api, category) if category else '?', 2),
         ('Downloads', '{total} ({monthly}/mo)'.format(total=si_suffixed(downloads), monthly=si_suffixed(monthly))
                       if downloads else '?', 1),
+        ('Version',   version_str,                                         1),
+        ('Category',  _category_label(api, category) if category else '?', 2),
         ('Favorites', si_suffixed(favorites) if favorites else '?',        1),
+        ('Updated',   date.strftime('%x') if date else '?',               1),
     ]
 
     if is_installed:
-        rows.append(('Directory', addon.folder, 4))
+        rows.append(('Directory', addon.folder, 3 if api_cell else 4))
+        if api_cell:
+            rows.append(('API', api_cell, 1))
 
     return rows
 
@@ -325,11 +382,26 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             if locked_copy:
                 version_badges.append(locked_badge)
 
+        # From the game's AddOnSettings.txt
+        disabled = local.disabled_in_game(addon) if is_installed and local is not None and not is_embedded else None
+
         badges = []
         if is_installed and has_missing:
-            badges.append(('❌ Missing dependencies',
-                           'Some add-ons needed by this add-on are not installed, so it will not load in game.'))
+            tip = 'Some add-ons needed by this add-on are not installed, so it will not load in game.'
+            if disabled is not None and disabled.everywhere:
+                tip += ' It is currently disabled in game, so this only matters once it is enabled.'
+            badges.append(('❌ Missing dependencies', tip))
         badges.extend(version_badges)
+        if disabled is not None:
+            listed = ', '.join(str(character) for character in disabled.characters)
+            if disabled.everywhere:
+                badges.append(('⏸ Disabled on all characters',
+                               'Disabled in game for all characters. '
+                               'It is still kept up to date, so it can be enabled at any time.'))
+            else:
+                badges.append(('⏸ Disabled on {count} character(s)'.format(count=len(disabled.characters)),
+                               'Disabled in game on: {listed}. It is still kept up to date, so it can be enabled '
+                               'at any time.'.format(listed=listed)))
         if is_installed and addon.infos is not None and len(addon.infos.folders) > 1 and addon.version_rank:
             if addon.version_rank == 'active':
                 badges.append(('🟢 active copy',

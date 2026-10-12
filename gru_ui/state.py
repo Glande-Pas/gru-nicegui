@@ -25,6 +25,7 @@ from gru.config import root_key, load_config, save_config, user_config
 from gru.api import API, AmbiguousDirectory
 from gru.cache import prune_downloads
 from gru.install import Folder
+from gru.apiversions import load as load_api_versions
 
 from .utils import strip_eso_colors
 
@@ -63,6 +64,7 @@ class AppState:
             if self.target_available(self.target):
                 local = Folder(GAME, self.config, self.target)
                 local.scan(self.api)
+                local.api_versions = load_api_versions()
                 self.local = local
                 with contextlib.suppress(OSError):
                     prune_downloads(local.installed)
