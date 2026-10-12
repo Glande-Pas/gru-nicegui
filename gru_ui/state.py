@@ -47,6 +47,7 @@ class AppState:
         self.api_loaded = time.monotonic()
         self.candidates: dict[str, list] = {}  # dir -> ESOUI candidates, valid for the loaded API data
         self.pending_search = ''
+        self.pending_card = ''  # anchor id of an installed card to scroll to on the Installed page
         self.local = None
         self.local_loaded = False
         self.target = self.config.get('app', 'target', fallback='live')
@@ -197,6 +198,12 @@ def search_for(term: str):
     """Open the Search page with `term` already searched."""
     get_state().pending_search = term
     ui.navigate.to('/search')
+
+
+def show_installed_card(anchor: str):
+    """Open the Installed page scrolled to the card with HTML id `anchor`."""
+    get_state().pending_card = anchor
+    ui.navigate.to('/')
 
 
 def dependency_search_term(dir_name: str) -> str:

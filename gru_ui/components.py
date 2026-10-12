@@ -19,7 +19,7 @@ from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anch
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
                     ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
-                    dependency_search_term, card_detail, run_work)
+                    dependency_search_term, card_detail, run_work, show_installed_card)
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -354,6 +354,11 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                              any(c.id == addon.id for c in ambiguous_candidates(a))]
                             if not is_installed and has_id and local is not None else [])
         already_installed = bool(installed_copies)
+        installed_top = None
+        for copy in sorted(installed_copies, key=update_moot)[:1]:
+            installed_top = copy
+            while installed_top.parent is not None:
+                installed_top = installed_top.parent
         locked_copy = any(a.locked for a in installed_copies + ambiguous_copies)
 
         has_missing = (is_installed and not is_embedded and local is not None and
@@ -481,6 +486,10 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         else:
                             ui.html('<span class="gru-badge-warn" title="No ESOUI.com add-on uses this folder name, '
                                     'so it can\'t be updated.">⚠️ Not found on ESOUI.com</span>')
+                        if installed_top is not None:
+                            ui.html('<a style="cursor:pointer;font-size:0.85em">📦 Installed Add-Ons</a>').on(
+                                'click', lambda: show_installed_card(anchor_id(installed_top.dir))) \
+                                .tooltip('Go to the installed copy of this add-on')
 
             if is_installed and local is not None:
                 if level != 'compact':
@@ -493,9 +502,12 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                     'Replaces the installed ' + ', '.join(
                                         str(a.folder.relative_to(local.root)) for a in ambiguous_copies)
                                     + ' folder and records it as this add-on' if ambiguous_copies else None)
-                    btn = ui.button('⬇️ Install', on_click=lambda: _run_install(addon, api, local, refresh))
+                    btn = ui.button('🔁 Reinstall' if already_installed else '⬇️ Install',
+                                    on_click=lambda: _run_install(addon, api, local, refresh))
                     btn.set_enabled(not locked_copy)
-                    btn.tooltip(install_help or 'Download this add-on from ESOUI.com into your add-ons folder')
+                    btn.tooltip(install_help or (
+                        'Download this add-on again from ESOUI.com, replacing the installed copy'
+                        if already_installed else 'Download this add-on from ESOUI.com into your add-ons folder'))
 
                 if is_installed:
                     ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh)) \

@@ -8,6 +8,7 @@ import io
 import json
 import warnings
 from collections import defaultdict
+from types import SimpleNamespace
 
 from nicegui import ui
 
@@ -342,6 +343,17 @@ def installed_page():
                           ' 100);'.format(id=json.dumps(e.args)))
 
     ui.on('gru_goto_card', goto_card)
+
+    if state.pending_card:
+        anchor, state.pending_card = state.pending_card, ''
+
+        async def show_pending():
+            if not await ui.run_javascript(f'!!document.getElementById({json.dumps(anchor)})'):
+                await goto_card(SimpleNamespace(args=anchor))
+            else:
+                ui.run_javascript(f'document.getElementById({json.dumps(anchor)}).scrollIntoView()')
+
+        ui.timer(0.1, show_pending, once=True)
     ui.run_javascript('''
         if (!window.gruGotoCard) {
             window.gruGotoCard = true;
