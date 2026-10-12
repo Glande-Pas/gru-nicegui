@@ -12,7 +12,7 @@ from nicegui import app, run, ui
 
 from .state import get_state, ensure_loaded, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME
-from .updates import latest_release, update_url
+from .updates import is_newer, latest_release, update_url
 from .utils import package_version
 
 BUILTIN_COLORS = {'primary', 'secondary', 'warning'}  # Quasar already has classes for these
@@ -191,7 +191,7 @@ async def _check_for_update():
         return
     _update_checked = True
     latest = await run.io_bound(latest_release)
-    if latest is None or latest[0] == package_version('gru-nicegui'):
+    if latest is None or not is_newer(latest[0], package_version('gru-nicegui')):
         return
     version, release_page = latest
     with ui.card().classes('fixed bottom-4 right-4 z-50 gap-1') as card:

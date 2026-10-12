@@ -4,6 +4,7 @@
 """Once-a-day check of the latest GitHub release for a newer Gru, published once the store build is certified."""
 
 import json
+import re
 import time
 
 import requests
@@ -39,6 +40,15 @@ def latest_release() -> tuple[str, str] | None:
         return (cached['version'], cached['link']) if cached.get('version') else None
     except Exception:
         return None
+
+
+def is_newer(latest: str, current: str) -> bool:
+    """Whether release `latest` is newer than `current`, a release or `git describe` string; False if unparsable."""
+    def numbers(version):
+        match = re.match(r'v?(\d+(?:\.\d+)*)', version)
+        return tuple(int(n) for n in match.group(1).split('.')) if match else None
+    new, old = numbers(latest), numbers(current)
+    return new is not None and old is not None and new > old
 
 
 def update_url(release_page: str) -> str:
