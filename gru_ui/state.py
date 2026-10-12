@@ -233,11 +233,14 @@ def spawn_ambiguous_resolution():
     _ambiguous_future = _RESOLVE_EXECUTOR.submit(_resolve_ambiguous, state.local, state.api)
 
 
-def _resolve_ambiguous(local, api) -> list | None:
-    """Worker job: None when nothing was ambiguous, else the addons resolved."""
+def _resolve_ambiguous(local, api) -> tuple[list, list] | None:
+    """Worker job: None when nothing was ambiguous, else the addons resolved and the warnings raised."""
     if not find_ambiguous(local, api):
         return None
-    return resolve_exact_matches(local, api)
+    with warnings.catch_warnings(record=True, category=UserWarning) as caught:
+        warnings.simplefilter('always')
+        resolved = resolve_exact_matches(local, api)
+    return resolved, caught
 
 
 def ambiguous_resolution_pending() -> bool:
@@ -252,11 +255,13 @@ async def poll_ambiguous_resolution() -> bool:
 
     future, _ambiguous_future = _ambiguous_future, None
     try:
-        resolved = future.result()
+        result = future.result()
     except Exception as exc:
         flash_warning('Auto-resolving ambiguous add-ons failed: {error}'.format(error=exc))
         return True
 
+    resolved, caught = result or ([], [])
+    flash_warnings(caught)
     if not resolved:
         return False
     await run.io_bound(get_state().local.export_state)
