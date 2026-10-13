@@ -266,7 +266,7 @@ async def patches_page():
             return bool(await confirm)
 
         async def scan_and_save():
-            linked = [a for a in local.installed if a.infos is not None and a.folder.parent == local.root]
+            linked = [a for a in local.installed if a.infos is not None and a.parent is None]
             if not linked:
                 flash_warning('No addons linked to the API — try refreshing first.')
                 return

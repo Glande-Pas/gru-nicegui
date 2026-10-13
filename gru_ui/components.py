@@ -163,7 +163,7 @@ def _api_cell(addon, local) -> str | None:
 def _metadata_rows(addon, api, local, full: bool = True) -> list[tuple]:
     """Return (label, value, span) triples for display."""
     is_installed = isinstance(addon, InstalledAddon)
-    is_embedded = is_installed and local is not None and addon.folder.parent != local.root
+    is_embedded = is_installed and local is not None and addon.parent is not None
 
     if is_installed:
         infos = addon.infos
@@ -352,7 +352,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
         is_locked = is_installed and addon.locked
         is_lib = getattr(addon, 'is_lib', False) is True
         unused = is_lib and is_installed and local is not None and local.depcount(addon) == 0
-        is_embedded = is_installed and local is not None and addon.folder.parent != local.root
+        is_embedded = is_installed and local is not None and addon.parent is not None
 
         title = eso_colored(addon.title) if addon.title else ''
         link = (addon.infos.metadata.get('link') if is_installed and addon.infos else None) or \
