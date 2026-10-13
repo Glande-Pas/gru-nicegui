@@ -182,15 +182,16 @@ def installed_page():
             ambiguous_now = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
             unused_now = local.unused_deps(installed, opt=opt_deps())
             missing_now = local.missing_deps(installed, opt=opt_deps())
-            with ui.row().classes('w-full items-center gap-2'):
-                summary = ['{installed} addon(s) installed, {updates} update(s) available.'
-                           .format(installed=len(installed), updates=len(updatable))]
+            libraries = [a for a in installed if getattr(a, 'is_lib', False) is True]
+            with ui.column().classes('w-full gap-2'):
+                summary = ['{installed} installed addon(s) ({libs} libraries), {updates} update(s) available.'
+                           .format(installed=len(installed), libs=len(libraries), updates=len(updatable))]
                 if locked_now:
                     summary.append('{count} version locked.'.format(count=len(locked_now)))
                 if ambiguous_now:
                     summary.append('{count} matching several ESOUI.com add-ons.'.format(count=len(ambiguous_now)))
-                ui.label(' '.join(summary)).classes('text-caption flex-grow min-w-0')
-                with ui.row().classes('gap-2 shrink-0 no-wrap'):
+                ui.label(' '.join(summary)).classes('text-caption')
+                with ui.row().classes('gap-2'):
                     ui.button('⬆️ Update all', on_click=update_all) \
                       .tooltip('Update every add-on with a newer ESOUI.com version (locked ones are skipped), '
                                'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
