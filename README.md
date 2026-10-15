@@ -24,6 +24,9 @@ Gru's code is licensed under [EUPL-1.2](LICENSE.md).
    - **Linux**: download `gru-x86_64.flatpak` (or `gru-aarch64.flatpak` on ARM) from the
      [latest release](https://github.com/Glande-Pas/gru-nicegui/releases/latest), then
      `flatpak install --user gru-x86_64.flatpak`.
+   - **macOS**: download from the [latest release](https://github.com/Glande-Pas/gru-nicegui/releases/latest) either
+     `gru-macos-arm64.zip` (Apple silicon) or `gru-macos-x64.zip` (Intel), unzip and move `Gru.app` to `Applications`.
+     The app is not signed, so allow it via **Privacy & Security** on the first launch (see [macOS](#macos)).
    - **Python**: `pip install gru-nicegui`, then run `gru-app`. On Linux this also needs WebKitGTK, see [Linux](#linux).
 2. Start it. On first start, you may need to open **Settings** and point it at your ESO `AddOns` folder, typically
    `Documents\Elder Scrolls Online\live\AddOns` on Windows.
@@ -42,14 +45,14 @@ the system's web engine. Most problems come from that engine, not from Gru.
 
 ### First steps
 
-- **Read the console.** Start Gru from a terminal (`flatpak run io.github.Glande_Pas.Gru`, or `gru-app` for pip
-  installs) to see pywebview's errors and the address the interface is served on:
-  `NiceGUI ready to go on http://127.0.0.1:<port>`. The Microsoft Store version has no console.
+- **Read the console.** Start Gru from a terminal (`flatpak run io.github.Glande_Pas.Gru`, `gru-app` for pip
+  installs, or `Gru.app/Contents/MacOS/gru` on macOS) to see pywebview's errors and the address the interface is
+  served on: `NiceGUI ready to go on http://127.0.0.1:<port>`. The Microsoft Store version has no console.
 - **Open that address in a browser.** If the page works there, the app is fine and the problem is the
   window; you can keep using the browser until it's fixed.
 - **Get more detail** by starting the app with `PYWEBVIEW_LOG=debug` set in the environment. With Flatpak, pass
   environment variables as `flatpak run --env=PYWEBVIEW_LOG=debug io.github.Glande_Pas.Gru`.
-- **Pick the backend yourself** with `PYWEBVIEW_GUI`: `gtk` on Linux, `edgechromium` on Windows.
+- **Pick the backend yourself** with `PYWEBVIEW_GUI`: `gtk` on Linux, `edgechromium` on Windows, `cocoa` on macOS.
 
 ### Windows
 
@@ -73,6 +76,15 @@ The Flatpak ships WebKitGTK and uses it directly; the first two points only appl
   `WEBKIT_DISABLE_DMABUF_RENDERER=1`, `WEBKIT_DISABLE_COMPOSITING_MODE=1`, or `GDK_BACKEND=x11`, e.g.
   `flatpak run --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 io.github.Glande_Pas.Gru`.
 
+### macOS
+
+- **"Gru" Not Opened, Apple could not verify it:** the app is not signed or notarized, so Gatekeeper blocks it
+  after download. Either open **System Settings** → **Privacy & Security** and click **Open Anyway** next to the
+  message about Gru (it appears after the first attempt), or remove the quarantine flag in a terminal:
+  `xattr -dr com.apple.quarantine /Applications/Gru.app`. Right-click → **Open** no longer works on macOS 15 and later.
+- **Uses the system web engine (WebKit):** no extra runtime is needed. If you run from source, pywebview installs
+  PyObjC itself.
+
 # Running from source
 
 ```sh
@@ -87,7 +99,7 @@ On Linux, pywebview also needs WebKitGTK and PyGObject, see [Linux](#linux).
 
 ```sh
 pip install -e ".[build]"
-pyinstaller gru.spec    # writes dist/gru or dist/gru.exe
+pyinstaller gru.spec    # writes dist/gru, dist/gru.exe, or dist/Gru.app on macOS
 ```
 
 Builds keep a console window open for logs by default; set `GRU_CONSOLE=0` to build without one.
