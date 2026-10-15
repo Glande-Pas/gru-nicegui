@@ -29,6 +29,18 @@ def initial_theme() -> dict:
     return get_theme(load_config().get('app', 'theme', fallback=DEFAULT_THEME))
 
 
+def window_size(width: int = 1400, height: int = 900) -> tuple[int, int]:
+    """The preferred size, shrunk to fit the primary screen."""
+    if sys.platform == 'darwin':  # AppKit clamps windows itself, and querying screens would load it in this process
+        return width, height
+    try:
+        import webview
+        screen = webview.screens[0]
+    except Exception:  # no display/backend available: keep the preferred size
+        return width, height
+    return min(width, int(screen.width * 0.9)), min(height, int(screen.height * 0.9))
+
+
 def run():
     # Read by Windows WinForms backend, and throws if it isn't a real .ico
     app.native.start_args['icon'] = str(_ICON_ICO)
@@ -40,7 +52,7 @@ def run():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
         ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=theme['dark'], reload=False,
-               native=True, window_size=(1400, 900), reconnect_timeout=10)
+               native=True, window_size=window_size(), reconnect_timeout=10)
     except KeyboardInterrupt:
         pass  # Ctrl+C in the terminal: exit quietly
 
