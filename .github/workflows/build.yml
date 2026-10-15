@@ -99,10 +99,23 @@ jobs:
           GRU_CONSOLE: ${{ github.ref_type == 'tag' && '0' || '1' }}
         run: pyinstaller gru.spec
 
+      - name: Package app bundle
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent dist/Gru.app dist/${{ matrix.artifact-name }}.zip
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact-name }}
-          path: dist/gru${{ runner.os == 'Windows' && '.exe' || '' }}
+          path: ${{ runner.os == 'Windows' && 'dist/gru.exe' || runner.os == 'macOS' && format('dist/{0}.zip', matrix.artifact-name) || 'dist/gru' }}
+
+      - name: Upload to GitHub Release
+        if: ${{ runner.os == 'macOS' && github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: dist/${{ matrix.artifact-name }}.zip
 
       - name: Package MSIX
         if: runner.os == 'Windows'
