@@ -6,6 +6,7 @@
 
 import importlib.resources
 import signal
+import sys
 
 from nicegui import app, ui
 
@@ -19,6 +20,16 @@ import pages.patches  # noqa: F401
 import pages.changes  # noqa: F401
 from gru_ui import shell
 from gru_ui.themes import get_theme, DEFAULT_THEME
+
+APP_ID = 'io.github.Glande_Pas.Gru'
+
+if sys.platform.startswith('linux'):
+    # GTK derives the window's app id from the program name; matching the .desktop id gives the window its icon
+    try:
+        from gi.repository import GLib
+        GLib.set_prgname(APP_ID)
+    except ImportError:
+        pass  # no PyGObject: another pywebview backend
 
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 _ICON_ICO = importlib.resources.files('gru_ui').joinpath('assets', 'icon.ico')
