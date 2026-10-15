@@ -23,6 +23,10 @@ jobs:
           - os: windows-11-arm
             artifact-name: gru-windows-arm64
             msix-arch: arm64
+          - os: macos-26
+            artifact-name: gru-macos-arm64
+          - os: macos-26-intel
+            artifact-name: gru-macos-x64
     runs-on: ${{ matrix.os }}
     outputs:
       msix-version: ${{ steps.msix.outputs.version }}
