@@ -40,7 +40,10 @@ _ambiguous_future = None
 
 class AppState:
     def __init__(self):
-        locale.setlocale(locale.LC_ALL, '')
+        try:
+            locale.setlocale(locale.LC_ALL, '')
+        except locale.Error:
+            pass  # locale missing from the environment (e.g. flatpak runtime): keep the default
         self.config = load_config()
         self.auto_update_claimed = False
         self.api = API.live(self.config)
