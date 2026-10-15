@@ -3,6 +3,8 @@
 
 """Search page: find and install addons."""
 
+import json
+
 from nicegui import run, ui
 
 from gru_ui import shell
@@ -25,20 +27,49 @@ async def search_page():
     generation = 0
     labels = {'downloads': 'downloads', 'monthly': 'monthly downloads', 'favorites': 'favorites'}
 
-    def popular() -> list:
+    def ancestors(cat_id: int) -> set[int]:
+        seen, todo = set(), [cat_id]
+        while todo:
+            current = todo.pop()
+            if current in seen or current not in api.categories:
+                continue
+            seen.add(current)
+            todo.extend(api.categories[current]['parent_ids'])
+        return seen
+
+    def in_category(addon, cat_id: int) -> bool:
+        own = addon.metadata.get('category')
+        return own is not None and cat_id in ancestors(own)
+
+    def popular(cat_id: int | None) -> list:
         key = sortkey() or 'downloads'
-        return sorted(api.addons.values(), key=lambda a: a.metadata.get(key) or 0, reverse=True)[:search_results()]
+        pool = [a for a in api.addons.values() if not cat_id or in_category(a, cat_id)]
+        return sorted(pool, key=lambda a: a.metadata.get(key) or 0, reverse=True)[:search_results()]
+
+    def category_options() -> dict:
+        used = {a.metadata.get('category') for a in api.addons.values()}
+        shown = {c for u in used if u in api.categories for c in ancestors(u)}
+        names = {c: ' > '.join(api.cat_name_hierarchy(c)) for c in shown}
+        ordered = sorted(names.items(), key=lambda kv: kv[1].lower())
+        return {0: 'All categories', **dict(ordered)}
 
     @ui.refreshable
-    async def results(term: str):
+    async def results(term: str, cat_id: int | None = None):
         nonlocal generation
         generation += 1
         mine = generation
         with ui.row().classes('items-center gap-2') as searching:
             ui.spinner()
             ui.label('Searching…')
-        found = await run.io_bound(lambda: api.search(term, tiebreakattr=sortkey(), maxlen=search_results())
-                                   if term else popular())
+        def lookup() -> list:
+            if not term:
+                return popular(cat_id)
+            if not cat_id:
+                return api.search(term, tiebreakattr=sortkey(), maxlen=search_results())
+            hits = api.search(term, tiebreakattr=sortkey(), maxlen=len(api.addons))
+            return [a for a in hits if in_category(a, cat_id)][:search_results()]
+
+        found = await run.io_bound(lookup)
         if mine != generation:  # a newer search superseded this one
             return
         searching.delete()
@@ -52,23 +83,53 @@ async def search_page():
         ui.label(heading).classes('text-caption')
         ui.separator()
         for addon in found:
-            addon_card(addon, api, local, lambda: results.refresh(term))
+            addon_card(addon, api, local, lambda: results.refresh(term, cat_id))
 
-    search_state = {'term': state.pending_search or page_params().get('q', '')}
+    options = category_options()
+    try:
+        initial_cat = int(page_params().get('cat', 0))
+    except (TypeError, ValueError):
+        initial_cat = 0
+    search_state = {'term': state.pending_search or page_params().get('q', ''),
+                    'cat': initial_cat if initial_cat in options else 0}
     state.pending_search = ''
     if search_state['term']:  # after NiceGUI's own history push for this navigation, which sees the URL as already set
-        ui.timer(0.3, lambda: remember_params('/search', {'q': search_state['term']}), once=True)
+        ui.timer(0.3, lambda: remember_params('/search', search_params()), once=True)
+
+    def search_params() -> dict:
+        params = {'q': search_state['term']}
+        if search_state['cat']:
+            params['cat'] = str(search_state['cat'])
+        return params
 
     def on_search(e):
         search_state['term'] = e.value or ''
-        remember_params('/search', {'q': search_state['term']})
-        results.refresh(search_state['term'])
+        remember_params('/search', search_params())
+        results.refresh(search_state['term'], search_state['cat'])
 
-    ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \
-      .props('debounce=300').classes('w-full')
-    await results(search_state['term'])
+    def on_category(e):
+        search_state['cat'] = e.value or 0
+        remember_params('/search', search_params())
+        results.refresh(search_state['term'], search_state['cat'])
+
+    with ui.row().classes('w-full items-center no-wrap'):
+        ui.input('Search', placeholder='Search add-ons…', value=search_state['term'], on_change=on_search) \
+          .props('debounce=300 dense').classes('flex-grow')
+        category_select = ui.select(options, value=search_state['cat'], label='Category', on_change=on_category) \
+            .props('dense options-dense').classes('w-72').tooltip('Includes subcategories')
+        # NiceGUI's option dicts have no room for extras and are rebuilt on change, so option icons are looked up by index
+        icons = json.dumps({i: api.categories.get(c, {}).get('icon') or '' for i, c in enumerate(options)})
+        category_select.add_slot('option', '''
+            <q-item v-bind="props.itemProps">
+              <q-item-section avatar style="min-width: 0; padding-right: 6px">
+                <img v-if='ICONS[props.opt.value]' :src='ICONS[props.opt.value]' style="width: 30px; height: 30px">
+                <span v-else style="display: inline-block; width: 30px"></span>
+              </q-item-section>
+              <q-item-section>{{ props.opt.label }}</q-item-section>
+            </q-item>'''.replace('ICONS', '(' + icons + ')'))
+    await results(search_state['term'], search_state['cat'])
     async def poll():
         if await poll_ambiguous_resolution():
-            results.refresh(search_state['term'])
+            results.refresh(search_state['term'], search_state['cat'])
 
     ui.timer(2.0, poll)
