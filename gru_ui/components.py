@@ -312,8 +312,11 @@ def _render_dependents(addon, local, dimmed: bool) -> None:
         if not required and not optional:
             ui.html('<span>❌ None</span>').tooltip('No installed add-on uses this library: it can be removed')
             return
-        groups = ((required, '', 'Needs this library'), (optional, ' (optional)', 'Optionally uses this library'))
-        for others, mark, tip in groups:
+        groups = ((required, '',
+                   'Needs this library, bundled with it', 'Needs this library: go to its card'),
+                  (optional, ' (optional)',
+                   'Optionally uses this library, bundled with it', 'Optionally uses this library: go to its card'))
+        for others, mark, bundled_tip, linked_tip in groups:
             for other in sorted(others, key=lambda a: (a.title or a.dir).lower()):
                 top = other
                 while top.parent is not None:
@@ -322,9 +325,9 @@ def _render_dependents(addon, local, dimmed: bool) -> None:
                     icon='📗' if getattr(other, 'is_lib', False) is True else '🧩',
                     name=html.escape(strip_eso_colors(other.title or other.dir)), mark=mark)
                 if top is own_top:
-                    ui.html(f'<span>{name}</span>').tooltip(tip + ', bundled with it')
+                    ui.html(f'<span>{name}</span>').tooltip(bundled_tip)
                 else:
-                    ui.html(f'<a href="#{anchor_id(top.dir)}">{name}</a>').tooltip(tip + ': go to its card')
+                    ui.html(f'<a href="#{anchor_id(top.dir)}">{name}</a>').tooltip(linked_tip)
 
 
 # Cards the user opened to full detail this session, whatever the card detail setting
@@ -417,13 +420,17 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
         badges = []
         if is_installed and has_missing:
+            is_disabled = disabled is not None and disabled.everywhere
             if only_outdated:
-                tip = 'Some add-ons needed by this add-on are installed in an older version than it requires, ' \
-                      'so it will not load in game.'
+                tip = ('Some add-ons needed by this add-on are installed in an older version than it requires, '
+                       'so it will not load in game. It is currently disabled in game, '
+                       'so this only matters once it is enabled.' if is_disabled else
+                       'Some add-ons needed by this add-on are installed in an older version than it requires, '
+                       'so it will not load in game.')
             else:
-                tip = 'Some add-ons needed by this add-on are not installed, so it will not load in game.'
-            if disabled is not None and disabled.everywhere:
-                tip += ' It is currently disabled in game, so this only matters once it is enabled.'
+                tip = ('Some add-ons needed by this add-on are not installed, so it will not load in game. '
+                       'It is currently disabled in game, so this only matters once it is enabled.' if is_disabled else
+                       'Some add-ons needed by this add-on are not installed, so it will not load in game.')
             badges.append(('❌ Missing dependencies', tip))
         badges.extend(version_badges)
         if disabled is not None:
@@ -516,9 +523,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
             with ui.row().classes('w-full justify-end gap-1' + dim):
                 if not is_installed and has_id:
                     install_help = ('Unlock the installed version first' if locked_copy else
-                                    'Replaces the installed ' + ', '.join(
-                                        str(a.folder.relative_to(local.root)) for a in ambiguous_copies)
-                                    + ' folder and records it as this add-on' if ambiguous_copies else None)
+                                    'Replaces the installed {folders} folder and records it as this add-on'.format(
+                                        folders=', '.join(str(a.folder.relative_to(local.root))
+                                                          for a in ambiguous_copies)) if ambiguous_copies else None)
                     btn = ui.button('🔁 Reinstall' if already_installed else '⬇️ Install',
                                     on_click=lambda: _run_install(addon, api, local, refresh))
                     btn.set_enabled(not locked_copy)

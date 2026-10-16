@@ -143,7 +143,7 @@ def parse_import(data: bytes) -> list[Item]:
             item.link_id = link_id
             items.append(item)
     except csv.Error as err:
-        raise ImportFormatError(f'Malformed CSV: {err}') from None
+        raise ImportFormatError('Malformed CSV: {error}'.format(error=err)) from None
     return items
 
 
