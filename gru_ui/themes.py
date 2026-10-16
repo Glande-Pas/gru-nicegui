@@ -3,12 +3,17 @@
 
 """Named GUI color themes, selected via the app.theme config value.
 
-Every entry but `dark` is registered as a Quasar color, i.e. the CSS variable --q-<name> (underscores
+Every entry but `dark` and `NON_COLORS` is registered as a Quasar color, i.e. the CSS variable --q-<name> (underscores
 become hyphens) plus the .text-<name> / .bg-<name> classes, and used by those names in props and CSS. """
+
+# Entries that are not colors: the sidebar image (a file in gru_ui/assets) and an optional CSS filter for it
+NON_COLORS = ('dark', 'mascot', 'mascot_filter')
 
 THEMES = {
     'Midnight Gold': {
         'dark': True,
+        'mascot': 'gru.png',
+        'mascot_filter': 'drop-shadow(0 0 1px #FFC800)',
         'page_bg': '#121212',
         'primary': '#FFC800',
         'secondary': '#2B2B52',
@@ -29,6 +34,8 @@ THEMES = {
     },
     'Daylight': {
         'dark': False,
+        'mascot': 'gru.png',
+        'mascot_filter': '',
         'page_bg': '#FFFFFF',
         'primary': '#FFC800',
         'secondary': '#2B2B52',

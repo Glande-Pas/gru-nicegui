@@ -11,7 +11,7 @@ from collections.abc import Callable
 from nicegui import app, run, ui
 
 from .state import get_state, ensure_loaded, set_target, patches_enabled
-from .themes import get_theme, DEFAULT_THEME
+from .themes import get_theme, DEFAULT_THEME, NON_COLORS
 from .updates import is_newer, latest_release, update_url
 from .utils import package_version
 
@@ -26,7 +26,6 @@ _PAGES = [
     ('/about', 'ℹ️', 'About'),
 ]
 
-_LOGO = importlib.resources.files('gru_ui').joinpath('assets', 'gru.png')
 _ICON = importlib.resources.files('gru_ui').joinpath('assets', 'icon.png')
 
 _META_CSS = """
@@ -112,7 +111,7 @@ def root():
     theme = get_theme(theme_name)
 
     ui.add_head_html(f'<style>{_META_CSS}</style>')
-    colors = {key: value for key, value in theme.items() if key != 'dark'}
+    colors = {key: value for key, value in theme.items() if key not in NON_COLORS}
     ui.colors(**colors)
     # ui.colors only applies once the page mounts: emit the same variables and classes in the initial HTML
     # so the first paint is already themed
@@ -173,7 +172,8 @@ def root():
             ui.label('🚪')
             ui.label('Exit')
         with ui.column().classes('w-full flex-grow min-h-0 overflow-hidden'):
-            ui.image(str(_LOGO)).classes('w-full').props('fit=cover position=top')
+            ui.image(str(importlib.resources.files('gru_ui').joinpath('assets', theme['mascot']))) \
+                .classes('w-full').props('fit=cover position=top').style('filter: ' + (theme['mascot_filter'] or 'none'))
 
     def show_active(path: str):
         active = path.split('?', 1)[0].split('#', 1)[0] or '/'
