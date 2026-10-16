@@ -213,6 +213,10 @@ def search_for(term: str):
 
 def show_installed_card(anchor: str):
     """Open the Installed page scrolled to the card with HTML id `anchor`."""
+    path = ui.context.client.sub_pages_router.current_path
+    if path.split('?', 1)[0].split('#', 1)[0] == '/':  # already there: the page's own handler scrolls to it
+        ui.run_javascript('emitEvent("gru_goto_card", {id});'.format(id=json.dumps(anchor)))
+        return
     get_state().pending_card = anchor
     ui.navigate.to('/')
 

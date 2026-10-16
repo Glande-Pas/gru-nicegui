@@ -56,6 +56,7 @@ if sys.platform == 'darwin':
         icon='packaging/macos/icon.icns',
         bundle_identifier='io.github.Glande_Pas.Gru',
         version=importlib.metadata.version('gru-nicegui'),
+        # TODO: add CFBundleURLTypes for the gru:// scheme to this plist (and handle the kAEGetURL Apple Event)
         info_plist={'CFBundleName': 'Gru', 'NSHighResolutionCapable': True},
     )
 else:

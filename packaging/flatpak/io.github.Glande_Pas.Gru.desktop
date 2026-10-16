@@ -2,8 +2,9 @@
 Type=Application
 Name=Gru
 Comment=Elder Scrolls Online add-on manager
-Exec=gru-app
+Exec=gru-app %u
 Icon=io.github.Glande_Pas.Gru
 Terminal=false
 Categories=Game;Utility;
+MimeType=x-scheme-handler/gru;
 Keywords=ESO;Elder Scrolls Online;addons;ESOUI;
