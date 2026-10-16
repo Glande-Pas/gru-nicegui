@@ -18,7 +18,7 @@ from gru_ui import shell
 from gru_ui.state import (get_state, flash_warning, flash_info, flash_summary, flash_warnings, logged_changes,
                           rescan_async, diff_addon_patch)
 from gru_ui.utils import bold, code
-from gru_ui.components import global_progress, progress_factory
+from gru_ui.components import action_button, global_progress, progress_factory
 
 
 def _diff_content_equal(a: str, b: str) -> bool:
@@ -309,7 +309,7 @@ async def patches_page():
             body.refresh()
 
         with ui.row().classes('w-full items-center gap-2'):
-            ui.button('💾 Scan and Save', on_click=scan_and_save) \
+            action_button('💾 Scan and Save', '⏳ Scanning…', scan_and_save) \
               .tooltip('Compare every installed add-on with its ESOUI.com original '
                        'and save local changes as patches')
             if patches:
@@ -364,16 +364,16 @@ async def patches_page():
                 with ui.row().classes('w-full items-center gap-2'):
                     label = ui.html(summary + ('  ·  ⏳ Checking…' if addon else '')).classes('flex-grow')
 
-                    apply_btn = ui.button(
-                        '▶️ Apply',
-                        on_click=lambda a=addon, pf=patch_file: _try_apply_patch(a, pf, body.refresh))
+                    apply_btn = action_button(
+                        '▶️ Apply', '⏳ Applying…',
+                        lambda a=addon, pf=patch_file: _try_apply_patch(a, pf, body.refresh))
                     apply_btn.disable()
                     apply_btn.tooltip("Add-on isn't installed" if addon is None else
                                       'Re-apply this patch to the installed add-on')
 
-                    revert_btn = ui.button(
-                        '↩️ Revert',
-                        on_click=lambda a=addon: _do_revert(a, api, local, body.refresh))
+                    revert_btn = action_button(
+                        '↩️ Revert', '⏳ Reverting…',
+                        lambda a=addon: _do_revert(a, api, local, body.refresh))
                     revert_btn.set_visibility(False)
                     if addon is not None:
                         revert_btn.tooltip('Reinstalls from ESOUI.com, discarding these changes -- not a '
@@ -389,7 +389,7 @@ async def patches_page():
                         await run.io_bound(_discard, pf)
                         body.refresh()
 
-                    ui.button('🗑️ Delete', on_click=delete) \
+                    action_button('🗑️ Delete', '⏳ Deleting…', delete) \
                       .tooltip("Delete the saved patch. The add-on's files are not touched")
 
                 # Highlighting every diff up front makes the page slow to load: render on first open

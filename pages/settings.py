@@ -12,6 +12,7 @@ from gru.config import root_key, save_config
 from gru_ui import shell
 from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail, \
     update_by_date, set_update_by_date
+from gru_ui.components import action_button
 from gru_ui.utils import open_folder
 from gru_ui.themes import THEMES, DEFAULT_THEME
 
@@ -63,7 +64,7 @@ def _addons_directory(target: str):
         _addons_directory.refresh()
 
     with ui.row():
-        ui.button('✅ Apply directory', on_click=apply_directory).tooltip('Use this folder and rescan')
+        action_button('✅ Apply directory', '⏳ Applying…', apply_directory).tooltip('Use this folder and rescan')
         if target != 'live':
             ui.button('🗑️ Clear', on_click=clear_directory).tooltip('Forget this folder')
 

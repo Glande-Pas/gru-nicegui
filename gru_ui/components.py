@@ -5,6 +5,7 @@
 
 import contextlib
 import html
+import inspect
 import pathlib
 import re
 import warnings
@@ -96,6 +97,25 @@ def _category_icon(api, category_id: int) -> str | None:
         return api.cat(category_id)['icon'] or None
     except Exception:
         return None
+
+
+def action_button(label: str, busy_label: str, on_click) -> ui.button:
+    """A button that is disabled and shows `busy_label` while its (possibly async) `on_click` runs."""
+    btn = ui.button(label)
+
+    async def clicked():
+        was_enabled = btn.enabled
+        btn.disable()
+        btn.set_text(busy_label)
+        try:
+            result = on_click()
+            if inspect.isawaitable(result):
+                await result
+        finally:
+            btn.set_text(label)
+            btn.set_enabled(was_enabled)
+    btn.on_click(clicked)
+    return btn
 
 
 def _bold_diff_suffix(current: str, upstream: str) -> str:
@@ -528,8 +548,9 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                     'Replaces the installed {folders} folder and records it as this add-on'.format(
                                         folders=', '.join(str(a.folder.relative_to(local.root))
                                                           for a in ambiguous_copies)) if ambiguous_copies else None)
-                    btn = ui.button('🔁 Reinstall' if already_installed else '⬇️ Install',
-                                    on_click=lambda: _run_install(addon, api, local, refresh))
+                    btn = action_button('🔁 Reinstall' if already_installed else '⬇️ Install',
+                                        '⏳ Reinstalling…' if already_installed else '⏳ Installing…',
+                                        lambda: _run_install(addon, api, local, refresh))
                     btn.set_enabled(not locked_copy)
                     btn.tooltip(install_help or (
                         'Download this add-on again from ESOUI.com, replacing the installed copy'
@@ -541,11 +562,12 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         label = ('⬆️ Install {version} standalone' if is_embedded else '⬆️ Update to {version}') \
                             .format(version=latest) if latest else \
                             '⬆️ Install standalone' if is_embedded else '⬆️ Update'
-                        up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
+                        up_btn = action_button(label, '⏳ Installing…' if is_embedded else '⏳ Updating…',
+                                               lambda: _run_update(addon, api, local, refresh))
                         up_btn.props('color=update text-color=update-fg').tooltip('Install the update as a standalone library add-on' if is_embedded else
                                        'Update to the latest ESOUI.com version')
 
-                    ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh)) \
+                    action_button('🗑️ Remove', '⏳ Removing…', lambda: _handle_remove(addon, local, refresh)) \
                       .tooltip("Delete this add-on's folder, including any add-ons bundled inside it")
 
                     # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
@@ -556,14 +578,15 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
                     if not is_embedded:
                         lock_label = '🔓 Unlock version' if is_locked else '🔒 Lock version'
-                        lock_btn = ui.button(
-                            lock_label,
-                            on_click=lambda: _handle_lock(addon, is_locked, card.refresh, on_lock_change))
+                        lock_btn = action_button(
+                            lock_label, '⏳ Unlocking…' if is_locked else '⏳ Locking…',
+                            lambda: _handle_lock(addon, is_locked, card.refresh, on_lock_change))
                         lock_btn.tooltip('Allow updates for this add-on again' if is_locked else
                                          'Pin to the installed version: skip updates')
 
                     if not is_embedded and patches_enabled():
-                        save_btn = ui.button('💾 Save changes', on_click=lambda: _handle_save(addon, api, local, card.refresh))
+                        save_btn = action_button('💾 Save changes', '⏳ Saving…',
+                                                 lambda: _handle_save(addon, api, local, card.refresh))
                         save_btn.set_enabled(addon.infos is not None)
                         save_btn.tooltip('Save local changes as a patch, to re-apply after updates'
                                          if addon.infos else "Add-on isn't matched online")

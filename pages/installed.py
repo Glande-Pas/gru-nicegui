@@ -18,7 +18,7 @@ from gru_ui.state import (get_state, CARD_DETAILS, card_detail, set_card_detail,
                           remove_vars_setting, logged_changes, update_pending, ambiguous_candidates,
                           poll_ambiguous_resolution, claim_auto_update, run_work)
 from gru_ui.import_dialog import open_import_dialog
-from gru_ui.components import addon_card, progress_factory, global_progress, open_choose_match, \
+from gru_ui.components import action_button, addon_card, progress_factory, global_progress, open_choose_match, \
     reset_opened_cards
 from gru_ui.utils import bold, strip_eso_colors, anchor_id, fuzzy_score, installed_item, updated_item
 
@@ -193,7 +193,7 @@ def installed_page():
                     summary.append('{count} matching several ESOUI.com add-ons.'.format(count=len(ambiguous_now)))
                 ui.label(' '.join(summary)).classes('text-caption')
                 with ui.row().classes('gap-2'):
-                    update_btn = ui.button('⬆️ Update all', on_click=update_all)
+                    update_btn = action_button('⬆️ Update all', '⏳ Updating…', update_all)
                     if updatable:
                         update_btn.props('color=update text-color=update-fg')
                         with update_btn:
@@ -201,13 +201,13 @@ def installed_page():
                     update_btn \
                       .tooltip('Update every add-on with a newer ESOUI.com version (locked ones are skipped), '
                                'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
-                    ui.button('⬇️ Install missing', on_click=install_missing) \
+                    action_button('⬇️ Install missing', '⏳ Installing…', install_missing) \
                       .tooltip('Install or update dependencies that installed add-ons need '
                                'but are missing or too old.') \
                       .set_enabled(bool(missing_now))
                     ui.button('🧹 Remove unused', on_click=remove_unused) \
                       .tooltip('Remove libraries that no installed add-on depends on.').set_enabled(bool(unused_now))
-                    ui.button('🔄 Refresh', on_click=refresh_all) \
+                    action_button('🔄 Refresh', '⏳ Refreshing…', refresh_all) \
                       .tooltip('Re-fetch the ESOUI.com add-on list and rescan the add-ons folder')
                     export_label = {'libs': '📤 Export libraries', 'addons': '📤 Export add-ons'}.get(
                         filter_state['libs'], '📤 Export')
