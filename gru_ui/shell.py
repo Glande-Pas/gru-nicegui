@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 from nicegui import app, run, ui
 
+from . import links
 from .state import get_state, ensure_loaded, set_target, patches_enabled
 from .themes import get_theme, DEFAULT_THEME, NON_COLORS
 from .updates import is_newer, latest_release, update_url
@@ -191,6 +192,7 @@ def root():
     ui.sub_pages(_ROUTES).classes('w-full')
 
     ui.timer(1.0, _check_for_update, once=True)
+    ui.timer(0.5, links.open_pending, once=True)
 
 
 _update_checked = False

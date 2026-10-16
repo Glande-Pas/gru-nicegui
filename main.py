@@ -5,6 +5,7 @@
 """Entry point: registers every page and starts the NiceGUI server."""
 
 import importlib.resources
+import multiprocessing
 import signal
 import sys
 
@@ -18,7 +19,7 @@ import pages.installed  # noqa: F401
 import pages.search  # noqa: F401
 import pages.patches  # noqa: F401
 import pages.changes  # noqa: F401
-from gru_ui import shell
+from gru_ui import links, shell, single_instance
 from gru_ui.themes import get_theme, DEFAULT_THEME
 
 APP_ID = 'io.github.Glande_Pas.Gru'
@@ -53,6 +54,16 @@ def window_size(width: int = 1400, height: int = 900) -> tuple[int, int]:
 
 
 def run():
+    port = None
+    if multiprocessing.parent_process() is None:  # not the native window's subprocess
+        link = links.find_url(sys.argv[1:])
+        if link and single_instance.forward(link):
+            return
+        if link:
+            links.pending.append(link)
+        port = single_instance.free_port()
+        single_instance.prepare()
+        app.on_startup(lambda: single_instance.publish(port))
     # Read by Windows WinForms backend, and throws if it isn't a real .ico
     app.native.start_args['icon'] = str(_ICON_ICO)
     app.native.settings['ALLOW_DOWNLOADS'] = True
@@ -63,7 +74,7 @@ def run():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
         ui.run(shell.root, title='Gru', favicon=str(_ICON_ICO), dark=theme['dark'], reload=False,
-               native=True, window_size=window_size(), reconnect_timeout=10)
+               native=True, port=port, window_size=window_size(), reconnect_timeout=10)
     except KeyboardInterrupt:
         pass  # Ctrl+C in the terminal: exit quietly
 

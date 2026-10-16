@@ -25,6 +25,12 @@ _MAX_VERSION = 100
 _MERGED = {'LibGroupSocket': 'LibGroupBroadcast'}  # folders now shipped by another listing
 
 
+def esoui_addon_id(link: str) -> int | None:
+    """The add-on id in an ESOUI.com add-on page link, or None if it isn't one."""
+    match = _LINK.match(link)
+    return int(match.group(1)) if match else None
+
+
 class ImportFormatError(ValueError):
     """The file isn't a usable add-on list."""
 
@@ -127,11 +133,10 @@ def parse_import(data: bytes) -> list[Item]:
                 continue
             link_id = None
             if item.link:
-                match = _LINK.match(item.link)
-                if match is None:
+                link_id = esoui_addon_id(item.link)
+                if link_id is None:
                     items.append(_invalid(item, 'Not an ESOUI.com add-on link'))
                     continue
-                link_id = int(match.group(1))
             if not item.dir and link_id is None:
                 items.append(_invalid(item, 'Neither folder nor link'))
                 continue
