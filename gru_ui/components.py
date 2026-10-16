@@ -12,8 +12,7 @@ import webbrowser
 
 from nicegui import run, ui
 
-from gru.addon import AddonBundle, InstalledAddon, AddonInfo
-
+from gru.addon import AddonBundle, InstalledAddon, AddonInfo, parse_version
 from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anchor_id, bold, code, \
     installed_item, updated_item, hint
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
@@ -186,6 +185,9 @@ def _metadata_rows(addon, api, local, full: bool = True) -> list[tuple]:
             .format(version=version, latest=upstream_version)
     elif upstream_version and addon.can_update and not update_moot(addon):
         version_str = version + ' → ' + _bold_diff_suffix(version, upstream_version)
+        if addon.update_by_date and addon.override is None and parse_version(version) is not None \
+                and parse_version(version) == parse_version(upstream_version):
+            version_str = hint(version_str, 'Newer (re)upload')
     else:
         version_str = version
 

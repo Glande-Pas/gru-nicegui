@@ -14,7 +14,7 @@ import typing
 from dataclasses import dataclass, field
 
 import requests
-from gru.addon import _parse_version
+from gru.addon import parse_version
 from gru.api import AmbiguousDirectory
 
 MAX_BYTES = 1_000_000
@@ -197,7 +197,7 @@ def settle(item: Item) -> None:
 def _find_newer_locked(item: Item, api) -> None:
     """Flag an installed add-on whose locked version in the file is newer than the installed one and fetchable."""
     item.replace_candidate, item.newer_missing = False, ''
-    listed, current = _parse_version(item.version), _parse_version(item.installed.version)
+    listed, current = parse_version(item.version), parse_version(item.installed.version)
     if listed is None or current is None or listed <= current:
         return
     if item.version == item.info.version:
