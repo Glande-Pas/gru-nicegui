@@ -18,8 +18,19 @@ from .utils import open_folder, si_suffixed, eso_colored, strip_eso_colors, anch
     installed_item, updated_item, hint
 from .state import (opt_deps, rescan_async, flash_warning, flash_info, flash_summary, flash_warnings,
                     remove_vars_setting, patches_enabled, logged_changes, update_pending, update_moot, set_locked,
-                    ambiguous_candidates, ranked_candidates, set_match, save_addon_patch, search_for,
+                    ambiguous_candidates, ranked_candidates, set_match, mark_local, mark_online, save_addon_patch, search_for,
                     dependency_search_term, card_detail, run_work, show_installed_card)
+
+
+def split_source(source: str) -> tuple[str, str]:
+    """(remote, ref) of a `git+<remote>[@<ref>]` source; ('', '') otherwise."""
+    if not source.startswith('git+'):
+        return '', ''
+    rest = source[4:].removeprefix('git+')
+    remote, _, ref = rest.rpartition('@')
+    if not remote or ':' in ref or '/' in ref:
+        return rest, ''
+    return remote, ref
 
 
 def external_link(inner_html: str, url: str, style: str = '') -> None:
@@ -220,15 +231,25 @@ def _metadata_rows(addon, api, local, full: bool = True) -> list[tuple]:
             *([('API', api_cell, 1)] if api_cell else []),
         ]
 
-    rows = [
-        ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
-        ('Downloads', '{total} ({monthly}/mo)'.format(total=si_suffixed(downloads), monthly=si_suffixed(monthly))
-                      if downloads else '?', 1),
-        ('Version',   version_str,                                         1),
-        ('Category',  _category_label(api, category) if category else '?', 2),
-        ('Favorites', si_suffixed(favorites) if favorites else '?',        1),
-        ('Updated',   date.strftime('%x') if date else '?',               1),
-    ]
+    source = getattr(addon, 'source', '') if is_installed else ''
+    if source:
+        remote, ref = split_source(source)
+        source_str = (html.escape('Git: ' + ref if ref else 'Git') if remote else 'Local')
+        rows = [
+            ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
+            ('Source',    source_str,                                         1),
+            ('Version',   version_str,                                        1),
+        ]
+    else:
+        rows = [
+            ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
+            ('Downloads', '{total} ({monthly}/mo)'.format(total=si_suffixed(downloads), monthly=si_suffixed(monthly))
+                          if downloads else '?', 1),
+            ('Version',   version_str,                                         1),
+            ('Category',  _category_label(api, category) if category else '?', 2),
+            ('Favorites', si_suffixed(favorites) if favorites else '?',        1),
+            ('Updated',   date.strftime('%x') if date else '?',               1),
+        ]
 
     if is_installed and full:
         rows.append(('Directory', addon.folder, 3 if api_cell else 4))
@@ -390,7 +411,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
 
         installed_copies = ([a for a in local.installed if getattr(a, 'id', None) == addon.id]
                             if not is_installed and has_id and local is not None else [])
-        ambiguous_copies = ([a for a in local.installed if a.infos is None and
+        ambiguous_copies = ([a for a in local.installed if a.infos is None and not a.source and
                              any(c.id == addon.id for c in ambiguous_candidates(a))]
                             if not is_installed and has_id and local is not None else [])
         already_installed = bool(installed_copies)
@@ -458,6 +479,12 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                        'Some add-ons needed by this add-on are not installed, so it will not load in game.')
             badges.append(('❌ Missing dependencies', tip))
         badges.extend(version_badges)
+        source = getattr(addon, 'source', '') if is_installed and not is_embedded else ''
+        if source.startswith('git+'):
+            badges.append(('🌿 Git', 'A git checkout of {remote}: never matched on ESOUI.com nor updated by gru.'
+                                  .format(remote=split_source(source)[0])))
+        elif source:
+            badges.append(('📁 Local', 'Marked as local: never matched on ESOUI.com nor updated by gru.'))
         if disabled is not None:
             listed = ', '.join(str(character) for character in disabled.characters)
             if disabled.everywhere:
@@ -525,13 +552,20 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     _render_meta_grid(addon, api, local, full=level == 'full')
 
                 if not is_embedded:
-                    with ui.column().classes('items-end shrink-0'):
+                    with ui.column().classes('items-end shrink-0').style('min-width:10rem'):
                         if link:
                             external_link('🔗 ESOUI.com page', link, style='font-size:0.85em')
                         elif candidates:
                             ui.html('<span style="font-size:0.85em">Could be any of:</span>')
                             for c in candidates:
                                 external_link('🔗 {title}'.format(title=eso_colored(c.title)), c.metadata['link'])
+                        elif source:
+                            remote = split_source(source)[0]
+                            url = remote.removesuffix('.git') if remote.startswith(('http://', 'https://')) else ''
+                            if url:
+                                external_link('🔗 Git repository', url, style='font-size:0.85em')
+                            elif remote:
+                                ui.html('<span style="font-size:0.85em">Git repository</span>').tooltip(remote)
                         else:
                             ui.html('<span class="gru-badge-warn" title="No ESOUI.com add-on uses this folder name, '
                                     'so it can\'t be updated.">❔ Not found on ESOUI.com</span>')
@@ -587,12 +621,20 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         lock_btn.tooltip('Allow updates for this add-on again' if is_locked else
                                          'Pin to the installed version: skip updates')
 
-                    if not is_embedded and patches_enabled():
-                        save_btn = action_button('💾 Save changes', '⏳ Saving…',
-                                                 lambda: _handle_save(addon, api, local, card.refresh))
-                        save_btn.set_enabled(addon.infos is not None)
-                        save_btn.tooltip('Save local changes as a patch, to re-apply after updates'
-                                         if addon.infos else "Add-on isn't matched online")
+                    if not is_embedded and addon.infos is not None and patches_enabled():
+                        action_button('💾 Save changes', '⏳ Saving…',
+                                      lambda: _handle_save(addon, api, local, card.refresh)) \
+                            .tooltip('Save local changes as a patch, to re-apply after updates')
+
+                    if is_installed and addon.parent is None:
+                        if not source and addon.infos is None:
+                            action_button('📁 Mark as local', '⏳ Marking…',
+                                          lambda: _handle_mark(mark_local, addon, refresh)) \
+                                .tooltip('Never match this folder on ESOUI.com nor update it')
+                        elif source and not source.startswith('git+'):
+                            action_button('🌐 Match online', '⏳ Matching…',
+                                          lambda: _handle_mark(mark_online, addon, refresh)) \
+                                .tooltip('Look this folder up on ESOUI.com again')
 
             if children:
                 with ui.expansion(children_label or '{count} bundled addon(s)'.format(count=len(children)), icon='expand_more',
@@ -603,6 +645,11 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
     if registry is not None and getattr(addon, 'id', None) is not None:
         registry[addon.id] = card.refresh
     card()
+
+
+async def _handle_mark(action, addon, refresh):
+    await action(addon)
+    refresh()
 
 
 async def _handle_lock(addon, is_locked: bool, refresh_card, on_change=None):
@@ -781,9 +828,18 @@ def open_choose_match(addon: InstalledAddon, refresh, context: str | None = None
                 dialog.submit(True)
                 refresh()
 
-            confirm_btn = ui.button('✅ Confirm', on_click=confirm) \
-                .tooltip('Use the selected ESOUI.com listing for this folder')
-            confirm_btn.set_enabled(picked_box['value'] is not addon.infos)
+            async def make_local():
+                dialog.submit(True)
+                await mark_local(addon)
+                refresh()
+
+            with ui.row().classes('gap-2'):
+                confirm_btn = ui.button('✅ Confirm', on_click=confirm) \
+                    .tooltip('Use the selected ESOUI.com listing for this folder')
+                confirm_btn.set_enabled(picked_box['value'] is not addon.infos)
+                if addon.infos is None and not addon.source:
+                    ui.button('📁 None of these, mark as local', on_click=make_local) \
+                        .tooltip('Never match this folder on ESOUI.com nor update it')
 
     ui.timer(0.01, load, once=True)
     return dialog

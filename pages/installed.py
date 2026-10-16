@@ -94,7 +94,7 @@ def installed_page():
         installed = list(local.installed)
 
         ambiguous = [a for a in installed if a.parent is None and ambiguous_candidates(a)]
-        unmatched = [a for a in installed if a.parent is None and a.infos is None]
+        unmatched = [a for a in installed if a.parent is None and a.infos is None and not a.source]
         unused = local.unused_deps(installed, opt=opt_deps())
 
         async def offer_matching():
