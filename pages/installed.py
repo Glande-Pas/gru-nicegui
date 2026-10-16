@@ -193,7 +193,12 @@ def installed_page():
                     summary.append('{count} matching several ESOUI.com add-ons.'.format(count=len(ambiguous_now)))
                 ui.label(' '.join(summary)).classes('text-caption')
                 with ui.row().classes('gap-2'):
-                    ui.button('⬆️ Update all', on_click=update_all) \
+                    update_btn = ui.button('⬆️ Update all', on_click=update_all)
+                    if updatable:
+                        update_btn.props('color=update text-color=update-fg')
+                        with update_btn:
+                            ui.badge(str(len(updatable)), color='red').classes('ml-2')
+                    update_btn \
                       .tooltip('Update every add-on with a newer ESOUI.com version (locked ones are skipped), '
                                'and install their missing dependencies').set_enabled(bool(updatable or ambiguous_now))
                     ui.button('⬇️ Install missing', on_click=install_missing) \

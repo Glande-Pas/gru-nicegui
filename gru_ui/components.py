@@ -536,14 +536,17 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         if already_installed else 'Download this add-on from ESOUI.com into your add-ons folder'))
 
                 if is_installed:
+                    if can_update:
+                        latest = addon.infos.version if addon.infos else None
+                        label = ('⬆️ Install {version} standalone' if is_embedded else '⬆️ Update to {version}') \
+                            .format(version=latest) if latest else \
+                            '⬆️ Install standalone' if is_embedded else '⬆️ Update'
+                        up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
+                        up_btn.props('color=update text-color=update-fg').tooltip('Install the update as a standalone library add-on' if is_embedded else
+                                       'Update to the latest ESOUI.com version')
+
                     ui.button('🗑️ Remove', on_click=lambda: _handle_remove(addon, local, refresh)) \
                       .tooltip("Delete this add-on's folder, including any add-ons bundled inside it")
-
-                    if can_update:
-                        label = '⬆️ Install standalone' if is_embedded else '⬆️ Update'
-                        up_btn = ui.button(label, on_click=lambda: _run_update(addon, api, local, refresh))
-                        up_btn.tooltip('Install the update as a standalone library add-on' if is_embedded else
-                                       'Update to the latest ESOUI.com version')
 
                     # Only offered while unmatched: once set (by hand or by auto-resolve), a match is
                     # permanent -- remove the add-on and install the right one instead of changing it.
