@@ -27,7 +27,7 @@ from gru.cache import prune_downloads
 from gru.install import Folder
 from gru.apiversions import load as load_api_versions
 
-from .utils import strip_eso_colors
+from .utils import bold, strip_eso_colors
 
 
 GAME = 'ESO'
@@ -172,8 +172,16 @@ def rescan() -> str | None:
         error = _invalidate_api()
     if state.local is not None:
         state.local.scan(state.api)
+        _save_changed_git_sources(state.local)
         spawn_ambiguous_resolution()
     return error
+
+
+def _save_changed_git_sources(local):
+    """Persist git remotes/refs that changed since addons.csv was written."""
+    links, _ = local.read_csv_hints()
+    if any(a.source.startswith('git+') and links.get(a.dir) != a.source for a in local.installed):
+        local.export_state()
 
 
 def _flash_refresh_error(error: str | None):
@@ -402,6 +410,31 @@ def ambiguous_candidates(addon) -> list:
 def ranked_candidates(addon) -> list:
     """match_candidates(), best guess first -- the order `gru match` offers them in."""
     return rank_candidates(addon, match_candidates(addon), get_state().api, sortkey() or 'downloads')
+
+
+async def mark_local(addon):
+    """Never match `addon` (nor what is inside it) online, nor update it; persisted in addons.csv."""
+    local = get_state().local
+
+    def work():
+        local.mark_local(addon)
+        local.export_state()
+
+    await run.io_bound(work)
+    flash_info('{title} is now local: never matched online nor updated.'.format(title=bold(addon.title or addon.dir)))
+
+
+async def mark_online(addon):
+    """Undo mark_local() and rescan, matching `addon` online again."""
+    state = get_state()
+    rescanned = await run.io_bound(state.local.mark_online, addon, state.api)
+    title = bold(addon.title or addon.dir)
+    if rescanned is not None and rescanned.infos is not None:
+        flash_info('{title} is no longer local, matched online as {listing}.'
+                   .format(title=title, listing=bold(rescanned.infos.title)))
+    else:
+        flash_info('{title} is no longer local, but has no single online match.'.format(title=title))
+    spawn_ambiguous_resolution()
 
 
 async def set_match(addon, infos):
