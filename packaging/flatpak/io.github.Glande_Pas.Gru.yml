@@ -10,12 +10,15 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
+  # Tray icon, shown by desktops that implement the StatusNotifierItem protocol
+  - --talk-name=org.kde.StatusNotifierWatcher
   # Need to access game folder wherever the user installed ESO: Steam libraries, Wine prefixes, ...
   - --filesystem=home
   # Share settings, patches, change log with gru CLI tool from pypi
   # often useful for quick settings changes 'gru config set <key> <value>' instead of launching a GUI app
   - --filesystem=xdg-config/gru
 modules:
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
   - python-deps.json
 
   - name: gru-nicegui

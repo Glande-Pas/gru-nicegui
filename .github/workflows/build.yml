@@ -155,6 +155,8 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
 
       - name: Freeze Python dependencies
         run: |
@@ -162,8 +164,8 @@ jobs:
           runtime=$(~/.local/bin/yq -r '.sdk + "//" + .["runtime-version"]' packaging/flatpak/io.github.Glande_Pas.Gru.yml)
           ~/.local/bin/flatpak_pip_generator --pyproject-file pyproject.toml \
             --runtime "$runtime" --output packaging/flatpak/python-deps \
-            --ignore-installed gru-eso,nicegui,requests,pywebview \
-            --prefer-wheels aiohttp,httptools,markupsafe,orjson,pydantic-core,pyyaml,unicodedata2,uvloop,watchfiles || :
+            --ignore-installed gru-eso,nicegui,requests,pywebview --optdep-groups tray \
+            --prefer-wheels aiohttp,httptools,markupsafe,orjson,pillow,pydantic-core,pyyaml,unicodedata2,uvloop,watchfiles || :
           [ -f packaging/flatpak/python-deps.json ]
 
       - name: Lint the manifest

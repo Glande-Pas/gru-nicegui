@@ -13,7 +13,6 @@ import subprocess
 import sys
 
 from gru.channel import Channel, detect as detect_channel
-from gru.config import load_config, save_config
 
 from . import tray
 
@@ -41,6 +40,8 @@ def _command() -> list[str]:
 
 
 def _autostart_file() -> pathlib.Path:
+    if detect_channel() == Channel.FLATPAK:  # written by the portal in the host's config dir, visible via --filesystem=home
+        return pathlib.Path.home() / '.config' / 'autostart' / (APP_ID + '.desktop')
     base = os.environ.get('XDG_CONFIG_HOME') or str(pathlib.Path.home() / '.config')
     return pathlib.Path(base) / 'autostart' / 'gru-tray.desktop'
 
@@ -77,8 +78,6 @@ def _windows_value() -> str:
 
 
 def is_enabled() -> bool:
-    if detect_channel() == Channel.FLATPAK:
-        return load_config().getboolean('app', 'autostart', fallback=False)
     if os.name == 'nt':
         import winreg
         try:
@@ -95,9 +94,6 @@ def set_enabled(enabled: bool) -> None:
     try:
         if detect_channel() == Channel.FLATPAK:
             _request_background(enabled)
-            config = load_config()
-            config.set('app', 'autostart', 'on' if enabled else 'off')
-            save_config(config)
         elif os.name == 'nt':
             _set_run_key(enabled)
         elif sys.platform == 'darwin':

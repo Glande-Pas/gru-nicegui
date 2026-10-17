@@ -179,7 +179,7 @@ class Tray:
             if state.local is None:
                 state.load_local()
             else:
-                rescan()
+                rescan(readonly=True)
             self.apply(update_count(state.local) if state.local is not None else 0)
         except Exception:
             pass  # offline or mid-write: try again at the next check

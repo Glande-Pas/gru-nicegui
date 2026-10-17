@@ -164,15 +164,17 @@ def _invalidate_api() -> str | None:
     return '; '.join(dict.fromkeys(str(w.message) for w in caught)) or 'no data received'
 
 
-def rescan() -> str | None:
+def rescan(readonly: bool = False) -> str | None:
     """Re-scan the addons directory, against fresh ESOUI data if the loaded data is over an hour old.
-    Returns why the data couldn't be refreshed (previous data kept), else None."""
+    Nothing is written, nor background work started, if `readonly`. Returns why the data couldn't be refreshed (previous data kept), else None."""
     state = get_state()
     error = None
     if time.monotonic() - state.api_loaded > API_MAX_AGE:
         error = _invalidate_api()
     if state.local is not None:
         state.local.scan(state.api)
+        if readonly:
+            return error
         _save_changed_git_sources(state.local)
         spawn_ambiguous_resolution()
         if tray.enabled(state.config):
