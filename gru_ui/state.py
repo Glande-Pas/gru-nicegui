@@ -27,6 +27,7 @@ from gru.cache import prune_downloads
 from gru.install import Folder
 from gru.apiversions import load as load_api_versions
 
+from . import tray
 from .utils import bold, strip_eso_colors
 
 
@@ -174,6 +175,8 @@ def rescan() -> str | None:
         state.local.scan(state.api)
         _save_changed_git_sources(state.local)
         spawn_ambiguous_resolution()
+        if tray.enabled(state.config):
+            tray.publish_count(update_count(state.local))
     return error
 
 
@@ -389,6 +392,10 @@ def update_moot(addon) -> bool:
 def update_pending(addon) -> bool:
     """Whether an installed addon has an update that may be applied: outdated, not version-locked nor moot."""
     return addon.can_update and not addon.locked and not update_moot(addon)
+
+
+def update_count(local) -> int:
+    return sum(update_pending(a) for a in local.installed)
 
 
 def match_candidates(addon) -> list:

@@ -29,12 +29,17 @@ datas = [
     ('gru_ui/assets/ambiguous.png', 'gru_ui/assets'),
 ]
 
+# pystray picks its backend at runtime; its Linux AppIndicator typelib is only bundled if installed at build time
+hiddenimports = ['pystray._' + name for name in ('base', 'win32', 'darwin', 'appindicator', 'gtk', 'xorg')]
+if sys.platform.startswith('linux'):
+    hiddenimports.append('gi.repository.AyatanaAppIndicator3')
+
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

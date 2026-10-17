@@ -19,7 +19,7 @@ import pages.installed  # noqa: F401
 import pages.search  # noqa: F401
 import pages.patches  # noqa: F401
 import pages.changes  # noqa: F401
-from gru_ui import links, shell, single_instance
+from gru_ui import links, shell, single_instance, tray
 from gru_ui.themes import get_theme, DEFAULT_THEME
 
 APP_ID = 'io.github.Glande_Pas.Gru'
@@ -56,6 +56,9 @@ def window_size(width: int = 1400, height: int = 900) -> tuple[int, int]:
 def run():
     port = None
     if multiprocessing.parent_process() is None:  # not the native window's subprocess
+        if '--tray' in sys.argv[1:]:
+            tray.run()
+            return
         link = links.find_url(sys.argv[1:])
         if link and single_instance.forward(link):
             return
@@ -64,6 +67,8 @@ def run():
         port = single_instance.free_port()
         single_instance.prepare()
         app.on_startup(lambda: single_instance.publish(port))
+        if tray.enabled():
+            app.on_startup(tray.ensure_running)
     # Read by Windows WinForms backend, and throws if it isn't a real .ico
     app.native.start_args['icon'] = str(_ICON_ICO)
     app.native.settings['ALLOW_DOWNLOADS'] = True

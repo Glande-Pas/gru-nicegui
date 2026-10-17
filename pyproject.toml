@@ -13,7 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-build = ["pyinstaller"]
+tray = ["pystray", "Pillow"]
+build = ["pyinstaller", "pystray", "Pillow"]
 
 [project.scripts]
 gru-app = "main:run"

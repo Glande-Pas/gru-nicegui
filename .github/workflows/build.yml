@@ -57,7 +57,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libwebkit2gtk-4.1-0 gir1.2-gtk-3.0 gir1.2-webkit2-4.1 \
-            libgirepository1.0-dev libcairo2-dev pkg-config gcc python3-dev
+            gir1.2-ayatanaappindicator3-0.1 libgirepository1.0-dev libcairo2-dev pkg-config gcc python3-dev
 
       - name: Install gru and gru-nicegui
         shell: bash

@@ -83,9 +83,11 @@ def register_routes(token: str) -> None:
         if not hmac.compare_digest(request.headers.get(TOKEN_HEADER, ''), token):
             raise HTTPException(status_code=403)
         url = (await request.json()).get('url')
-        if parse(url) is None:
+        if url != '' and parse(url) is None:  # '' only asks to raise the window
             raise HTTPException(status_code=400)
         raise_window()
+        if url == '':
+            return {'ok': True}
         client = next((c for c in list(Client.instances.values()) if c.has_socket_connection), None)
         if client is None:
             pending.append(url)

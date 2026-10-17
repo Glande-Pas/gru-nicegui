@@ -9,7 +9,7 @@ import webview
 from nicegui import app, ui
 
 from gru.config import root_key, save_config
-from gru_ui import shell
+from gru_ui import shell, tray
 from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail, \
     update_by_date, set_update_by_date
 from gru_ui.components import action_button
@@ -115,6 +115,18 @@ def settings_page():
              'When the versions match, this option checks the installation date to detect that and offer the update. '
              'Turn it off if you get spurious updates due to other programs changing the file modification dates.'
              ).classes('text-caption')
+
+    if tray.available():
+        def on_tray_change(e):
+            config.set('app', 'tray', 'on' if e.value else 'off')
+            save_config(config)
+            if e.value:
+                tray.ensure_running()
+            ui.notify('Saved.', type='positive')
+
+        ui.switch('Show a tray icon with the number of updates', value=tray.enabled(config), on_change=on_tray_change) \
+          .tooltip('Checks for updates hourly in a small background process that outlives the window. '
+                   'Some desktops (e.g. GNOME) need an extension to display tray icons')
 
     ui.separator()
     ui.label('Add-on cards').classes('text-h6')
