@@ -24,6 +24,9 @@ datas = [
     ('gru_ui/assets/gru.png', 'gru_ui/assets'),
     ('gru_ui/assets/icon.png', 'gru_ui/assets'),
     ('gru_ui/assets/icon.ico', 'gru_ui/assets'),
+    ('gru_ui/assets/git.png', 'gru_ui/assets'),
+    ('gru_ui/assets/local.png', 'gru_ui/assets'),
+    ('gru_ui/assets/ambiguous.png', 'gru_ui/assets'),
 ]
 
 a = Analysis(

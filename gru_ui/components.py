@@ -5,6 +5,7 @@
 
 import contextlib
 import html
+import importlib.resources
 import inspect
 import pathlib
 import re
@@ -234,10 +235,10 @@ def _metadata_rows(addon, api, local, full: bool = True) -> list[tuple]:
     source = getattr(addon, 'source', '') if is_installed else ''
     if source:
         remote, ref = split_source(source)
-        source_str = (html.escape('Git: ' + ref if ref else 'Git') if remote else 'Local')
+        source_label, source_str = ('Git ref', html.escape(ref)) if ref else ('Source', 'Git' if remote else 'Local')
         rows = [
             ('Author',    eso_colored(addon.author) if addon.author else '?', 2),
-            ('Source',    source_str,                                         1),
+            (source_label, source_str,                                         1),
             ('Version',   version_str,                                        1),
         ]
     else:
@@ -545,6 +546,10 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     category = (addon.infos.metadata if is_installed and addon.infos else
                                 addon.metadata if not is_installed else {}).get('category')
                     icon_url = _category_icon(api, category) if category else None
+                    special = 'git' if source.startswith('git+') else 'local' if source else \
+                        'ambiguous' if candidates else None
+                    if special:
+                        icon_url = str(importlib.resources.files('gru_ui').joinpath('assets', special + '.png'))
                     if icon_url:
                         ui.image(icon_url).classes('w-10 h-10 shrink-0')
 
@@ -613,7 +618,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                         ui.button('🔗 Match ESOUI.com listing', on_click=lambda: open_choose_match(addon, refresh)) \
                           .tooltip('Select which ESOUI.com add-on this folder is, which several share')
 
-                    if not is_embedded:
+                    if not is_embedded and not source:
                         lock_label = '🔓 Unlock version' if is_locked else '🔒 Lock version'
                         lock_btn = action_button(
                             lock_label, '⏳ Unlocking…' if is_locked else '⏳ Locking…',
