@@ -6,10 +6,10 @@
 import pathlib
 
 import webview
-from nicegui import app, ui
+from nicegui import app, run, ui
 
 from gru.config import root_key, save_config
-from gru_ui import shell, tray
+from gru_ui import autostart, shell, tray
 from gru_ui.state import get_state, set_addons_root, GAME, flash_info, CARD_DETAILS, card_detail, set_card_detail, \
     update_by_date, set_update_by_date
 from gru_ui.components import action_button
@@ -124,9 +124,24 @@ def settings_page():
                 tray.ensure_running()
             ui.notify('Saved.', type='positive')
 
-        ui.switch('Show a tray icon with the number of updates', value=tray.enabled(config), on_change=on_tray_change) \
+        tray_switch = ui.switch('Show a tray icon with the number of updates', value=tray.enabled(config),
+                                on_change=on_tray_change) \
           .tooltip('Checks for updates hourly in a small background process that outlives the window. '
                    'Some desktops (e.g. GNOME) need an extension to display tray icons')
+
+        if autostart.supported():
+            async def on_autostart_change(e):
+                try:
+                    await run.io_bound(autostart.set_enabled, e.value)
+                except autostart.AutostartError as error:
+                    ui.notify(str(error), type='negative')
+                    autostart_switch.set_value(not e.value)
+                    return
+                ui.notify('Saved.', type='positive')
+
+            autostart_switch = ui.switch('Start the tray icon at login', value=autostart.is_enabled(),
+                                         on_change=on_autostart_change) \
+                                 .bind_enabled_from(tray_switch, 'value')
 
     ui.separator()
     ui.label('Add-on cards').classes('text-h6')
