@@ -151,6 +151,7 @@ def settings_page():
         ui.notify('Saved.', type='positive')
 
     ui.select(CARD_DETAILS, value=card_detail(), label='Detail level', on_change=on_detail_change) \
+      .classes('w-full max-w-xl') \
       .tooltip('Compact hides the dependency lines and the directory and API version. Standard shows what '
                'an add-on requires and, for libraries, what uses them. Full also shows optional dependencies, '
                'the directory and the API version. Also available on the Installed Add-Ons page.')

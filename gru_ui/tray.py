@@ -20,6 +20,7 @@ import time
 from gru.config import load_config, user_cache
 
 CHECK_EVERY = 3600  # seconds between scans
+ICON_WITH_BADGE = 52  # icon side in the 64 px badge icon
 POLL_EVERY = 30  # seconds between looking at the config and the count published by the app
 _LOCK = 'tray.lock'
 _COUNT = 'tray-updates.json'
@@ -104,23 +105,29 @@ def read_count(after: float) -> int | None:
 
 
 def badge_icon(count: int):
-    """The app icon with `count` in a red disc in the corner; the bare icon for 0."""
+    """The app icon with `count` in a green rounded square in the corner; the bare icon for 0."""
     from PIL import Image, ImageDraw, ImageFont
     size = 64
     with importlib.resources.files('gru_ui').joinpath('assets', 'icon.png').open('rb') as f:
-        image = Image.open(f).convert('RGBA').resize((size, size), Image.LANCZOS)
+        source = Image.open(f).convert('RGBA')
+    source = source.crop(source.getbbox())  # drop the transparent margins
+    side = size if count <= 0 else ICON_WITH_BADGE
+    scale = side / max(source.size)
+    icon = source.resize((max(1, round(source.width * scale)), max(1, round(source.height * scale))), Image.LANCZOS)
+    image = Image.new('RGBA', (size, size))
+    image.paste(icon, (0, size - icon.height))  # bottom left, clear of the badge
     if count <= 0:
         return image
     text = str(count) if count < 100 else '99+'
-    diameter = 40 if len(text) < 3 else 46
+    width, height = (42, 34) if len(text) < 3 else (56, 34)
     draw = ImageDraw.Draw(image)
-    box = (size - diameter, size - diameter, size - 1, size - 1)
-    draw.ellipse(box, fill='#e53935', outline='white', width=2)
+    box = (size - width, 0, size - 1, height - 1)
+    draw.rounded_rectangle(box, radius=9, fill='#43A047')
     try:
-        font = ImageFont.load_default(size=26 if len(text) < 3 else 20)
+        font = ImageFont.load_default(size=29 if len(text) < 3 else 23)
     except TypeError:  # Pillow < 10.1: fixed-size font
         font = ImageFont.load_default()
-    draw.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), text, fill='white', font=font, anchor='mm')
+    draw.text(((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), text, fill='white', font=font, anchor='mm', stroke_width=1, stroke_fill='white')
     return image
 
 
