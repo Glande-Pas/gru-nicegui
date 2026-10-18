@@ -1,0 +1,33 @@
+name: Store flight check
+
+on:
+  push:
+    branches: [ci-tests]
+  workflow_dispatch:
+
+jobs:
+  flight-submission:
+    runs-on: windows-latest
+    steps:
+      - name: Show the flight's published submission
+        env:
+          TENANT_ID: ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+        shell: pwsh
+        run: |
+          $app = '9P1251PBNJMM'
+          $flight = 'a175f98b-ed67-4046-8d30-f56f1486b54a'
+          $submission = '1152921505702162609'
+          $token = (Invoke-RestMethod -Method Post "https://login.microsoftonline.com/$env:TENANT_ID/oauth2/token" -Body @{
+              grant_type    = 'client_credentials'
+              client_id     = $env:CLIENT_ID
+              client_secret = $env:CLIENT_SECRET
+              resource      = 'https://manage.devcenter.microsoft.com'
+          }).access_token
+          $headers = @{ Authorization = "Bearer $token" }
+          $base = 'https://manage.devcenter.microsoft.com/v1.0/my/'
+          $result = Invoke-RestMethod -Headers $headers ($base + "applications/$app/flights/$flight/submissions/$submission")
+          # The upload URL is a signed link, and the log is public
+          $result.PSObject.Properties.Remove('fileUploadUrl')
+          $result | ConvertTo-Json -Depth 8
