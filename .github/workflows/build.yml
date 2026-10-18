@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'v*']
     tags: ['*']
   workflow_dispatch:
 
@@ -223,7 +223,11 @@ jobs:
           SELLER_ID: ${{ secrets.PARTNER_CENTER_SELLER_ID }}
           CLIENT_ID: ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+          BETA_FLIGHT_ID: a175f98b-ed67-4046-8d30-f56f1486b54a
         run: |
           msstore reconfigure --tenantId $env:TENANT_ID --sellerId $env:SELLER_ID `
             --clientId $env:CLIENT_ID --clientSecret $env:CLIENT_SECRET
-          msstore publish store\gru.msixbundle --appId 9P1251PBNJMM
+          # Releases from the v1 line go to the package flight only, not to everyone
+          $flight = @()
+          if ($env:GITHUB_REF_NAME -match '^v1\.') { $flight = '--flightId', $env:BETA_FLIGHT_ID }
+          msstore publish store\gru.msixbundle --appId 9P1251PBNJMM @flight
