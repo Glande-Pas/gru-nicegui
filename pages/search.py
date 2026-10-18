@@ -25,6 +25,13 @@ async def search_page():
         return
 
     generation = 0
+    cards: dict = {}
+
+    def refresh_cards(ids):
+        for addon_id in ids:
+            if addon_id in cards:
+                cards[addon_id]()
+
     labels = {'downloads': 'downloads', 'monthly': 'monthly downloads', 'favorites': 'favorites'}
 
     def ancestors(cat_id: int) -> set[int]:
@@ -73,6 +80,7 @@ async def search_page():
         if mine != generation:  # a newer search superseded this one
             return
         searching.delete()
+        cards.clear()
 
         if not found:
             ui.label('No results found.')
@@ -83,7 +91,8 @@ async def search_page():
         ui.label(heading).classes('text-caption')
         ui.separator()
         for addon in found:
-            addon_card(addon, api, local, lambda: results.refresh(term, cat_id))
+            addon_card(addon, api, local, lambda: results.refresh(term, cat_id), registry=cards,
+                       refresh_cards=refresh_cards)
 
     options = category_options()
     try:

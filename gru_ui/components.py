@@ -361,10 +361,13 @@ def reset_opened_cards() -> None:
 
 
 def addon_card(addon, api, local, refresh, children: list | None = None, children_label: str | None = None,
-               dimmed: bool = False, expanded: bool = False, on_lock_change=None):
+               dimmed: bool = False, expanded: bool = False, on_lock_change=None, registry: dict | None = None,
+               refresh_cards=None):
     """Render a single addon as a card with action buttons. When filtering, `children` holds only the matching
     bundled addons with `children_label` as their dropdown text, `dimmed` greys out the card itself and `expanded`
-    opens the dropdown. `on_lock_change` is called after locking or unlocking, which only refreshes this card."""
+    opens the dropdown. `on_lock_change` is called after locking or unlocking, which only refreshes this card.
+    A page can give a `registry` to be filled with each online add-on's id -> card refresh function, and a
+    `refresh_cards` called with the ids of the cards to refresh after an install, instead of `refresh`."""
     @ui.refreshable
     def card():
         is_installed = isinstance(addon, InstalledAddon)
@@ -550,7 +553,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                                           for a in ambiguous_copies)) if ambiguous_copies else None)
                     btn = action_button('🔁 Reinstall' if already_installed else '⬇️ Install',
                                         '⏳ Reinstalling…' if already_installed else '⏳ Installing…',
-                                        lambda: _run_install(addon, api, local, refresh))
+                                        lambda: _run_install(addon, api, local, refresh, refresh_cards))
                     btn.set_enabled(not locked_copy)
                     btn.tooltip(install_help or (
                         'Download this add-on again from ESOUI.com, replacing the installed copy'
@@ -597,6 +600,8 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                     for child in sorted(children, key=lambda a: a.title.lower()):
                         addon_card(child, api, local, refresh, on_lock_change=on_lock_change)
 
+    if registry is not None and getattr(addon, 'id', None) is not None:
+        registry[addon.id] = card.refresh
     card()
 
 
@@ -667,7 +672,7 @@ def _open_confirm_remove(addon: InstalledAddon, local, refresh):
     dialog.open()
 
 
-async def _run_install(addon: AddonInfo, api, local, refresh):
+async def _run_install(addon: AddonInfo, api, local, refresh, refresh_cards=None):
     before = {a.dir for a in local.installed}
     async with global_progress('Installing {title}...'.format(title=addon.title)) as state:
         progress = progress_factory(state)
@@ -681,10 +686,12 @@ async def _run_install(addon: AddonInfo, api, local, refresh):
         caught = await run_work(work, 'Failed to install {title}'.format(title=bold(addon.title)))
     flash_warnings(caught)
     await rescan_async()
-    flash_summary('Installed', [installed_item(a.title or a.dir, a.version)
-                                for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower())
-                                if a.dir not in before])
-    refresh()
+    new = [a for a in sorted(local.installed, key=lambda a: (a.title or a.dir).lower()) if a.dir not in before]
+    flash_summary('Installed', [installed_item(a.title or a.dir, a.version) for a in new])
+    if refresh_cards is None:
+        refresh()
+    else:
+        refresh_cards({addon.id, *(getattr(a, 'id', None) for a in new)} - {None})
 
 
 async def _run_update(addon: InstalledAddon, api, local, refresh):
