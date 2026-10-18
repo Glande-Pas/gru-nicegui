@@ -40,12 +40,12 @@ tool: `%APPDATA%\gru` on Windows, `~/.config/gru` on Linux, `~/Library/Preferenc
 
 ## Tray icon and start at login
 
-Settings can show a tray icon with the number of pending updates (a red badge on the Gru icon), and start it at login.
+Settings can show a tray icon with the number of pending updates (a green badge on the Gru icon), and start it at login.
 The icon runs in a small background process (`gru-app --tray`) that keeps running when the window is closed; use its
 **Quit** menu entry to stop it. It checks for updates hourly and only reads your add-ons folder.
 
 Requirements, as the switches only show when the tray is available:
-- **Windows, macOS, Flatpak** builds include everything, except that the Microsoft Store build has no start at login.
+- **Windows, macOS, Flatpak** builds include everything. In the Microsoft Store build, start at login is turned on in Windows Settings → Apps → Startup.
 - **Python**: `pip install gru-nicegui[tray]`.
 - **Linux** also needs the AppIndicator library and its GObject typelib, e.g. `gir1.2-ayatanaappindicator3-0.1` on
   Debian/Ubuntu, `libayatana-appindicator-gtk3` on Fedora, `libayatana-appindicator` on Arch.

@@ -133,6 +133,8 @@ def badge_icon(count: int):
 
 def run() -> None:
     """Show the tray icon until Quit (blocking). Quietly does nothing if one is already shown or can't be."""
+    if not enabled():
+        return
     lock = _acquire_lock()
     if lock is None:
         return

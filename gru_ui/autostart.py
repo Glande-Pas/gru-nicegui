@@ -3,7 +3,7 @@
 
 """Start the tray helper (`gru-app --tray`) at login, the native way for each platform:
 an XDG autostart entry on Linux, the Background portal in a Flatpak, the Run registry key on Windows
-and a LaunchAgent on macOS. Not offered for the Microsoft Store build: its startup tasks can't pass arguments."""
+and a LaunchAgent on macOS. The Microsoft Store build declares a startup task in its manifest instead; the user turns it on in Windows Settings."""
 
 import os
 import pathlib
@@ -28,6 +28,15 @@ class AutostartError(Exception):
 
 def supported() -> bool:
     return detect_channel() != Channel.MSSTORE and (os.name == 'nt' or sys.platform in ('darwin', 'linux'))
+
+
+def managed_by_system() -> bool:
+    """Whether starting at login is only switched in the system's settings (the Microsoft Store build)."""
+    return os.name == 'nt' and detect_channel() == Channel.MSSTORE
+
+
+def open_system_settings() -> None:
+    os.startfile('ms-settings:startupapps')  # type: ignore[attr-defined]
 
 
 def _command() -> list[str]:

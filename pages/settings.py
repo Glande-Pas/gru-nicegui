@@ -142,6 +142,10 @@ def settings_page():
             autostart_switch = ui.switch('Start the tray icon at login', value=autostart.is_enabled(),
                                          on_change=on_autostart_change) \
                                  .bind_enabled_from(tray_switch, 'value')
+        elif autostart.managed_by_system():
+            with ui.row().classes('items-center'):
+                ui.label('Start the tray icon at login: turn on Gru in Windows Settings.').classes('text-caption')
+                ui.button('Open Startup apps', on_click=autostart.open_system_settings).props('flat dense')
 
     ui.separator()
     ui.label('Add-on cards').classes('text-h6')

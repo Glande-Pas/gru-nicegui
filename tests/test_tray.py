@@ -37,3 +37,9 @@ def test_single_helper(cache):
 def test_badge_icon(count):
     pytest.importorskip('PIL')
     assert tray.badge_icon(count).size == (64, 64)
+
+
+def test_run_does_nothing_when_disabled(cache, monkeypatch):
+    monkeypatch.setattr(tray, 'enabled', lambda config=None: False)
+    tray.run()
+    assert not (cache / 'tray.lock').exists()
