@@ -30,3 +30,18 @@ def test_find_url():
     assert find_url(['--x', 'gru://www.esoui.com/downloads/info1.html', 'other']) \
         == 'gru://www.esoui.com/downloads/info1.html'
     assert find_url(['--x']) is None
+
+
+@pytest.mark.parametrize('remote, expected', [
+    ('git@github.com:Glande-Pas/gru-nicegui.git', 'https://github.com/Glande-Pas/gru-nicegui'),
+    ('git@gitlab.com:group/sub/repo', 'https://gitlab.com/group/sub/repo'),
+    ('ssh://git@host.example:2222/user/repo.git', 'https://host.example/user/repo'),
+    ('https://github.com/a/b.git', 'https://github.com/a/b'),
+    ('C:\\repos\\x', ''),
+    ('/srv/git/repo.git', ''),
+    ('localhost:repo', ''),
+    ('', ''),
+])
+def test_web_url(remote, expected):
+    from gru_ui.components import web_url
+    assert web_url(remote) == expected

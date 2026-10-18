@@ -34,6 +34,18 @@ def split_source(source: str) -> tuple[str, str]:
     return remote, ref
 
 
+_SCP_REMOTE = re.compile(r'^(?:[\w.~-]+@)?([\w-]+(?:\.[\w-]+)+):([^/\\][^\\]*)$')
+_SSH_REMOTE = re.compile(r'^ssh://(?:[^@/]+@)?([^:/]+)(?::\d+)?/(.+)$')
+
+
+def web_url(remote: str) -> str:
+    """The web page of a git `remote` (http(s), `ssh://` or `user@host:path`); '' if it has none."""
+    if remote.startswith(('http://', 'https://')):
+        return remote.removesuffix('.git')
+    match = _SSH_REMOTE.match(remote) or _SCP_REMOTE.match(remote)
+    return 'https://{host}/{path}'.format(host=match[1], path=match[2].removesuffix('.git').strip('/')) if match else ''
+
+
 def external_link(inner_html: str, url: str, style: str = '') -> None:
     """A link that opens in the system browser, not the native app window (no back/close there)."""
     ui.html(f'<a style="cursor:pointer;{style}">{inner_html}</a>').on('click', lambda: webbrowser.open(url))
@@ -566,7 +578,7 @@ def addon_card(addon, api, local, refresh, children: list | None = None, childre
                                 external_link('🔗 {title}'.format(title=eso_colored(c.title)), c.metadata['link'])
                         elif source:
                             remote = split_source(source)[0]
-                            url = remote.removesuffix('.git') if remote.startswith(('http://', 'https://')) else ''
+                            url = web_url(remote)
                             if url:
                                 external_link('🔗 Git repository', url, style='font-size:0.85em')
                             elif remote:
